@@ -2,14 +2,14 @@
 
 Sistem akuntansi, pemantauan kas multi-rekening (*cash pooling*), dan pengendalian progres fisik real-time untuk **27 Titik Proyek Sentra Pelayanan Program Gizi (SPPG / Makan Bergizi Gratis - MBG) Jawa Timur**.
 
-Sistem ini mentransformasikan lembar kerja spreadsheet manual (**31 sheet file Excel** `KAS PROYEK AK BSI 12102026.xlsx`) menjadi aplikasi terpusat *server-authoritative* berbasis web yang aman, akurat hingga digit desimal rupiah terkecil, dan terlindungi *Role-Based Access Control* (RBAC).
+Sistem ini mentransformasikan lembar kerja spreadsheet manual (**31 sheet file Excel** `KAS PROYEK AK BSI 12102026.xlsx`) menjadi aplikasi terpusat *server-authoritative* berbasis web yang aman, akurat hingga digit desimal rupiah terkecil, dan terlindungi kontrol peran & hak akses.
 
 ---
 
 ## 📑 Daftar Isi
 - [Latar Belakang & Transformasi Excel](#-latar-belakang--transformasi-excel)
 - [Fitur Utama Sistem](#-fitur-utama-sistem)
-- [Matriks Hak Akses (RBAC)](#-matriks-hak-akses-rbac)
+- [Matriks Peran & Hak Akses](#-matriks-peran--hak-akses)
 - [Kredensial Default Pengujian](#-kredensial-default-pengujian)
 - [Tech Stack](#-tech-stack)
 - [Panduan Menjalankan Lokal](#-panduan-menjalankan-lokal)
@@ -40,42 +40,84 @@ Sebelum sistem ini dibangun, seluruh pembukuan 27 titik proyek dicatat manual pa
    - 4 Metrik Keuangan Utama: *Omset Termin Masuk*, *Total Pengeluaran Kasbon/Subkon*, *Margin Kotor*, dan *Margin Bersih Riil*.
    - Filter Cepat (Hari Ini, 7 Hari, Bulan Ini, Tahun 2026, Semua Periode).
    - Multi-Row Selection & Ekspor Excel berformula dengan format rupiah rapi.
-   - Pencarian cepat titik proyek berdasarkan nama dan kode SPK.
+   - Pratinjau performa 27 titik proyek dengan penanda batas risiko margin.
+
 2. **Cash Pooling & Mutasi Rekening (`/cash-pooling`)**
    - Integrasi 3 pool rekening: **BSI Holding**, **Rekening Pooling Azka**, dan **Kas Kecil CIH Proyek**.
-   - Pencatatan Pemasukan, Pengeluaran, dan Perpindahan Antar-Kas (*Transfer Kas*).
+   - Pencatatan Pemasukan, Pengeluaran, dan Perpindahan Antar-Kas (*Transfer Saldo*).
    - Ekspor bukti mutasi dan cetak voucher PDF otomatis.
+   - Tampilan adaptif: tabel data pada desktop dan kartu transaksi responsif di mobile.
+
 3. **Kas Operasional Lapangan / CIH (`/kas-lapangan`)**
    - Pencatatan harian belanja semen, pasir, sewa molen, konsumsi tukang, dan kasbon harian.
    - Upload dan pratinjau bukti nota belanja fisik.
+   - Tampilan adaptif: tabel mutasi pada desktop dan kartu nota ringkas di mobile.
+
 4. **Beban & Pembayaran Subkon (`/subkon`)**
    - Pemantauan RAP (Rencana Anggaran Pelaksanaan) vs Realisasi kasbon per mandor.
-   - Peringatan dini (*early warning*) apabila pembayaran kasbon melebihi progres fisik.
-5. **Generator Invoice & Kuitansi (`/invoice`)**
-   - Penerbitan surat tagihan termin ke dinas/pemilik proyek dengan nomor otomatis dan perhitungan PPN/PPh terintegrasi.
-6. **Master Data & Manajemen Pengguna (`/pengaturan`)**
-   - **User Management**: Tambah pengguna, tentukan role, aktifkan/bekukan akun, dan hapus akun.
-   - **Master Subkon/Mandor**: Direktori 16 rekanan vendor pelaksana, nomor rekening, dan keahlian.
-   - **Master Rekening Kas**: Pengelolaan nomor rekening bank holding dan kas kecil.
-7. **Health Check Endpoint (`/api/health`)**
-   - Endpoint publik status container dan integritas koneksi SQLite database untuk Docker dan Kubernetes probes.
+   - Peringatan dini (*early warning alert*) apabila pembayaran kasbon melebihi persentase progres fisik lapangan (*Kasbon > Fisik*).
+   - Tampilan kartu data mobile (`md:hidden`) tanpa sideways scrolling.
+
+5. **Portofolio Titik Proyek SPPG (`/proyek`)**
+   - Katalog lengkap 27 titik dapur SPPG dengan switch tampilan **Grid** / **Tabel**.
+   - Filter status progres (Selesai, On-Progress) dan kategori pekerjaan.
+   - Akses detail ledger proyek lengkap dengan histori termin, subkon, dan kasbon (`/proyek/[id]`).
+
+6. **Master Rekening Bank & Kas (`/rekening`)**
+   - Pengelolaan rekening bank holding, rekening penampung modal, dan akun kas kecil.
+   - Modal **Lihat Detail Rekening** (tipe akun, bank, nomor rekening, pemilik, dan saldo awal).
+   - Modal **Edit Rekening** dan penghapusan data rekening.
+
+7. **Pengguna & Akun Sistem (`/pengguna`)**
+   - Manajemen akun pelaksana dan pembagian wewenang (*Direktur, Finance, Pengawas Lapangan*).
+   - Status akun menggunakan **Toggle Switch** interaktif (Aktif / Nonaktif).
+   - Modal **Edit Data Pengguna** (Nama, Username, Email, Role, No. HP).
+   - Modal **Ganti / Reset Kata Sandi** akun.
+
+8. **Peran & Hak Akses (`/peran`)**
+   - Direktori peran pengguna dengan matriks izin akses per modul sistem (*Dashboard, Proyek, Subkon, Termin, Kasbon, Kas Lapangan, Cash Pooling, Invoice, Laporan, Pengaturan*).
+   - Penambahan peran kustom dan penyesuaian hak akses granular.
+
+9. **Pengaturan Sistem (`/pengaturan`)**
+   - Konfigurasi identitas konsorsium pelaksana yang tercetak pada invoice dan kuitansi resmi.
+   - Pengaturan ambang batas risiko (*minimum margin warning* & *kasbon overprogress tolerance*).
+   - Status integritas database SQLite dengan konkurensi mode WAL (*Write-Ahead Logging*).
+
+10. **Pencarian Global Command Palette (`Ctrl + K`)**
+    - Modal pencarian instan yang dapat dibuka kapan saja melalui shortcut keyboard `Ctrl + K`.
+    - Menyaring data titik proyek SPPG, direktori subkon/mandor, dan navigasi menu cepat.
+
+11. **Pusat Notifikasi Operasional (Lonceng)**
+    - Drawer notifikasi dengan badge alert aktual (kasbon melebihi progres fisik, termin jatuh tempo verifikasi, dan saldo kas kecil menipis).
+
+12. **Pengalih Tema (Light / Dark Mode)**
+    - Tombol switch tema terang dan gelap di navbar dengan persistensi otomatis ke `localStorage`.
+
+13. **Generator Invoice & Kuitansi (`/invoice`)**
+    - Penerbitan surat tagihan termin ke dinas/pemilik proyek dengan nomor otomatis dan perhitungan PPN/PPh terintegrasi.
+
+14. **Health Check Endpoint (`/api/health`)**
+    - Endpoint publik status container dan integritas koneksi SQLite database untuk Docker dan Kubernetes probes.
 
 ---
 
-## 🔐 Matriks Hak Akses (RBAC)
+## 🔐 Matriks Peran & Hak Akses
 
-Aplikasi menerapkan kontrol wewenang berbasis peran (*Role-Based Access Control*) dengan proteksi server-side guard (`hooks.server.ts`), filtrasi navigasi dinamis, dan *field-level masking*:
+Aplikasi menerapkan kontrol hak akses server-side guard (`hooks.server.ts`), filtrasi navigasi dinamis, dan *field-level masking*:
 
 | Fitur / Halaman | `DIREKTUR` (Pimpinan) | `FINANCE` (Keuangan HO) | `SITE_MANAGER` (Pelaksana Lapangan) | Catatan Keamanan |
 | :--- | :---: | :---: | :---: | :--- |
 | **Dashboard Kas Besar** (`/`) | ✅ Full Akses | ✅ Full Akses | ⚠️ Terbatas | Nilai Margin Bersih & Saldo BSI dimasking `🔒 Terproteksi Direktur` untuk Site Manager |
-| **Detail Titik Proyek** (`/proyek/[id]`) | ✅ Full Akses | ✅ Full Akses | ✅ Input Progres | Site Manager dapat update persentase fisik, margin holding dimasking |
+| **Titik Proyek** (`/proyek`) | ✅ Full Akses | ✅ Full Akses | ✅ Input Progres | Site Manager dapat update persentase fisik, margin holding dimasking |
 | **Kas Lapangan (CIH)** (`/kas-lapangan`) | ✅ Full Akses | ✅ Full Akses | ✅ Input Nota | Pencatatan kasbon tukang & belanja material lapangan |
-| **Beban Subkon** (`/subkon`) | ✅ Full Akses | ✅ Full Akses | ✅ Pantau Mandor | Evaluasi progres vs pembayaran mandor |
+| **Subkon & Mandor** (`/subkon`) | ✅ Full Akses | ✅ Full Akses | ✅ Pantau Mandor | Evaluasi progres vs pembayaran mandor |
 | **Cash Pooling** (`/cash-pooling`) | ✅ Full Akses | ✅ Full Akses | ❌ **DIBLOKIR (303)** | Aliran kas antar rekening holding khusus otoritas kantor pusat |
 | **Generator Invoice** (`/invoice`) | ✅ Full Akses | ✅ Full Akses | ❌ **DIBLOKIR (303)** | Penagihan termin ke dinas |
 | **Laporan Cetak** (`/cetak/laporan`) | ✅ Full Akses | ✅ Full Akses | ❌ **DIBLOKIR (303)** | Laporan rekapitulasi keuangan eksekutif |
-| **Pengaturan & Master Data** (`/pengaturan`) | ✅ Full Akses | ❌ **DIBLOKIR (303)** | ❌ **DIBLOKIR (303)** | Eksklusif Direktur (Manajemen Akun & Konfigurasi Sistem) |
+| **Rekening Bank & Kas** (`/rekening`) | ✅ Full Akses | ✅ Full Akses | ❌ **DIBLOKIR (303)** | Konfigurasi rekening bank operasional & holding |
+| **Pengguna Sistem** (`/pengguna`) | ✅ Full Akses | ❌ **DIBLOKIR (303)** | ❌ **DIBLOKIR (303)** | Kelola akun, edit data, dan reset password |
+| **Peran & Hak Akses** (`/peran`) | ✅ Full Akses | ❌ **DIBLOKIR (303)** | ❌ **DIBLOKIR (303)** | Konfigurasi izin akses per modul |
+| **Pengaturan Sistem** (`/pengaturan`) | ✅ Full Akses | ❌ **DIBLOKIR (303)** | ❌ **DIBLOKIR (303)** | Konfigurasi profil instansi & parameter risiko |
 
 ---
 
@@ -96,11 +138,12 @@ Sistem menggunakan otentikasi kata sandi terverifikasi (bebas dari login PIN):
 ## 🛠️ Tech Stack
 
 - **Framework**: [SvelteKit 2](https://kit.svelte.dev/) dengan arsitektur **Svelte 5 Runes** (`$state`, `$derived`, `$props`).
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) dengan `@tailwindcss/vite`.
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) dengan `@tailwindcss/vite` & Dark Mode Theme.
 - **Database**: [SQLite (better-sqlite3)](https://github.com/WiseLibs/better-sqlite3) berkecepatan tinggi dengan mode **WAL (Write-Ahead Logging)** dan foreign keys aktif.
 - **ORM**: [Drizzle ORM](https://orm.drizzle.team/) & Drizzle Kit.
 - **Adapter**: `@sveltejs/adapter-node` untuk standalone server Node.js produksi.
 - **Export & PDF**: `exceljs`, `jspdf`, `jspdf-autotable`.
+- **Notifications**: `svelte-french-toast`.
 - **Icons**: `lucide-svelte`.
 - **Containerization**: Docker multi-stage build & Docker Compose.
 - **CI/CD**: GitHub Actions dengan pemeriksaan menyeluruh.
@@ -116,8 +159,8 @@ Sistem menggunakan otentikasi kata sandi terverifikasi (bebas dari login PIN):
 ### 2. Instalasi & Menjalankan
 ```bash
 # 1. Clone repository
-git clone https://github.com/username/pantau-mbg.git
-cd pantau-mbg
+git clone https://github.com/itzluthfi/AK-Keuangan.git
+cd AK-Keuangan
 
 # 2. Salin environment variable
 cp .env.example .env
@@ -240,15 +283,6 @@ flowchart TD
     Job6 --> Summary
 ```
 
-### Skenario & Kondisi yang Ditangani CI/CD:
-1. **Push Cepat Beruntun**: Mekanisme `concurrency` otomatis membatalkan eksekusi sebelumnya pada branch/PR yang sama untuk menghemat kuota runner.
-2. **Kegagalan Tipe TypeScript / Svelte 5**: `svelte-check` mendeteksi ketidakcocokan tipe kompilasi dan memblokir pipeline sebelum tahap build.
-3. **Integritas Database**: Pengujian seeder memastikan struktur tabel Drizzle ORM valid dan relasi foreign key berjalan tanpa constraint violation.
-4. **Validasi Artifak Produksi**: Memverifikasi keberadaan `build/index.js`, `build/client`, dan `build/server`.
-5. **Docker Container Readiness**: Container dijalankan dan dipantau hingga `/api/health` merespons `status: ok`. Jika container crash saat booting, log container otomatis ditampilkan ke log CI untuk investigasi cepat.
-6. **Keamanan Repository Fork**: Job publikasi ke GitHub Container Registry (`ghcr.io`) dilewati secara otomatis jika workflow dijalankan dari PR fork luar tanpa izin akses *write*.
-7. **Laporan Eksekutif**: Ringkasan Markdown status setiap tahapan workflow selalu dicetak ke `$GITHUB_STEP_SUMMARY` baik saat build berhasil maupun gagal.
-
 ---
 
 ## 📁 Struktur Direktori
@@ -257,40 +291,47 @@ flowchart TD
 pantau-mbg/
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml               # Pipeline CI/CD komprehensif
+│       └── ci-cd.yml                       # Pipeline CI/CD komprehensif
 ├── data/
-│   └── pantau_mbg.db               # Database SQLite lokal (WAL mode)
+│   └── pantau_mbg.db                       # Database SQLite lokal (WAL mode)
 ├── src/
-│   ├── hooks.server.ts             # Session resolver & RBAC Route Guard
+│   ├── hooks.server.ts                     # Session resolver & Role Guard
 │   ├── lib/
-│   │   ├── app-state.svelte.ts     # Svelte 5 Runes Global State
-│   │   ├── components/             # Komponen UI (app-sidebar, hot-toast, dll)
+│   │   ├── app-state.svelte.ts             # Svelte 5 Global State (Theme, Search, Notif)
+│   │   ├── components/
+│   │   │   ├── app-sidebar.svelte          # Navigasi sidebar responsif & ringkas
+│   │   │   ├── top-navbar.svelte           # Navbar: Search Ctrl+K, Dark Mode, Notif, Profile
+│   │   │   ├── global-search-modal.svelte  # Modal pencarian cepat proyek, subkon, & halaman
+│   │   │   └── hot-toast.svelte            # Notifikasi toast interaktif
 │   │   ├── server/
 │   │   │   ├── db/
-│   │   │   │   ├── index.ts        # Inisialisasi SQLite better-sqlite3 & WAL
-│   │   │   │   ├── schema.ts       # Schema Drizzle (Users, Projects, Termins, Vendors, etc)
-│   │   │   │   └── seed.ts         # Seeder 31 Sheet Excel ke SQLite
-│   │   │   └── security.ts         # User dictionary, Rate Limiting, Avatar generator
-│   │   └── utils/                  # Format rupiah, tanggal, PDF generator
+│   │   │   │   ├── index.ts                # Inisialisasi better-sqlite3 & WAL
+│   │   │   │   ├── schema.ts               # Schema Drizzle (Users, Roles, Accounts, etc)
+│   │   │   │   └── seed.ts                 # Seeder 31 Sheet Excel ke SQLite
+│   │   │   └── security.ts                 # Rate limiting, dual-layer validation, presets
+│   │   └── utils/                          # Format rupiah, tanggal, PDF generator
 │   └── routes/
-│       ├── +layout.svelte          # Shell aplikasi & notifikasi auth_error
-│       ├── +page.svelte            # Dashboard Kas Besar
-│       ├── api/health/             # Health check endpoint
-│       ├── cash-pooling/           # Kas Pooling BSI, TF Azka & Kas Kecil
-│       ├── cetak/                  # Rekapitulasi laporan cetak
-│       ├── invoice/                # Generator invoice termin dinas
-│       ├── kas-lapangan/           # Kas harian CIH & nota bukti
-│       ├── login/                  # Otentikasi kata sandi & Google SSO
-│       ├── pengaturan/             # Master Data & User Management (Khusus Direktur)
-│       ├── proyek/[id]/            # Detail titik proyek & update progres
-│       └── subkon/                 # Beban subkon, mandor & overprogress alert
-├── .dockerignore                   # Filter file build context Docker
-├── docker-compose.yml              # Orkes container dengan volume persisten
-├── Dockerfile                      # Multi-stage production container build
-├── package.json                    # Konfigurasi dependensi & npm scripts
-├── tsconfig.json                   # Konfigurasi TypeScript
-├── vite.config.ts                  # Vite + SvelteKit (@sveltejs/adapter-node)
-└── README.md                       # Dokumentasi lengkap proyek
+│       ├── +layout.svelte                  # Shell layout utama, tema & pencarian
+│       ├── +page.svelte                    # Dashboard Kas Besar SPPG
+│       ├── api/health/                     # Health check endpoint
+│       ├── cash-pooling/                   # Kas Pooling BSI, TF Azka & Kas Kecil
+│       ├── cetak/                          # Rekapitulasi laporan cetak
+│       ├── invoice/                        # Generator invoice termin dinas
+│       ├── kas-lapangan/                   # Kasir CIH & nota bukti belanja
+│       ├── login/                          # Otentikasi kata sandi akun
+│       ├── pengguna/                       # Manajemen Pengguna, status toggle, reset PW
+│       ├── peran/                          # Matriks hak akses & izin modul
+│       ├── pengaturan/                     # Pengaturan profil instansi & parameter risiko
+│       ├── proyek/                         # Portofolio 27 titik proyek (Grid/Tabel)
+│       ├── proyek/[id]/                    # Ledger detail proyek, termin, subkon & kasbon
+│       └── subkon/                         # Beban subkon, mandor & overprogress alert
+├── .dockerignore                           # Filter file build context Docker
+├── docker-compose.yml                      # Orkes container dengan volume persisten
+├── Dockerfile                              # Multi-stage production container build
+├── package.json                            # Konfigurasi dependensi & npm scripts
+├── tsconfig.json                           # Konfigurasi TypeScript
+├── vite.config.ts                          # Vite + SvelteKit (@sveltejs/adapter-node)
+└── README.md                               # Dokumentasi lengkap sistem
 ```
 
 ---
