@@ -4,6 +4,8 @@
 	import HotToast from '#lib/components/hot-toast.svelte';
 	import AppSidebar from '#lib/components/app-sidebar.svelte';
 	import TopNavbar from '#lib/components/top-navbar.svelte';
+	import GlobalSearchModal from '#lib/components/global-search-modal.svelte';
+	import { appState } from '#lib/app-state.svelte';
 	import { toast } from 'svelte-french-toast';
 
 	let { children } = $props();
@@ -16,6 +18,12 @@
 		if (authErr) {
 			toast.error(decodeURIComponent(authErr), { id: 'auth-error' });
 		}
+		// Synchronize theme on hydration
+		const savedTheme = localStorage.getItem('pantau_theme') as 'light' | 'dark' | null;
+		if (savedTheme) {
+			appState.theme = savedTheme;
+			document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+		}
 	});
 </script>
 
@@ -25,6 +33,9 @@
 
 <!-- React Hot Toast Container (Top Center) -->
 <HotToast />
+
+<!-- Global Search Command Palette (Ctrl + K) -->
+<GlobalSearchModal />
 
 {#if isAuthPage}
 	<!-- Plain Fullscreen Layout for Authentication Pages -->

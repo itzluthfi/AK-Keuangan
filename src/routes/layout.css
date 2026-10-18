@@ -57,3 +57,66 @@ button:active:not(:disabled),
 		page-break-after: always;
 	}
 }
+
+/* Dark Theme Variables & Fallbacks */
+html.dark {
+	color-scheme: dark;
+}
+html.dark body {
+	background-color: #0b0f19 !important;
+	color: #f1f5f9 !important;
+}
+html.dark .bg-white {
+	background-color: #111827 !important;
+}
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-50\/50,
+html.dark .bg-slate-50\/70 {
+	background-color: #182235 !important;
+}
+html.dark .bg-slate-100 {
+	background-color: #1f293d !important;
+}
+html.dark .border-slate-200,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-200\/60,
+html.dark .border-slate-200\/50,
+html.dark .border-slate-100 {
+	border-color: #243046 !important;
+}
+html.dark .text-slate-900 {
+	color: #f8fafc !important;
+}
+html.dark .text-slate-800 {
+	color: #e2e8f0 !important;
+}
+html.dark .text-slate-700 {
+	color: #cbd5e1 !important;
+}
+html.dark .text-slate-600 {
+	color: #94a3b8 !important;
+}
+html.dark .text-slate-500 {
+	color: #64748b !important;
+}
+html.dark input,
+html.dark select,
+html.dark textarea {
+	background-color: #172033 !important;
+	color: #f8fafc !important;
+	border-color: #334155 !important;
+}
+html.dark ::-webkit-scrollbar-track {
+	background: #0f172a;
+}
+html.dark ::-webkit-scrollbar-thumb {
+	background: #334155;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+	background: #475569;
+}
+

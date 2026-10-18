@@ -30,17 +30,7 @@
 
 	function isItemActive(itemUrl: string) {
 		if (itemUrl === '/') return page.url.pathname === '/' && page.url.search === '';
-		if (itemUrl.includes('?')) {
-			const [itemPath, itemQuery] = itemUrl.split('?');
-			const itemParams = new URLSearchParams(itemQuery);
-			const currentTab = page.url.searchParams.get('tab');
-			return page.url.pathname === itemPath && currentTab === itemParams.get('tab');
-		}
-		if (itemUrl === '/pengaturan') {
-			const tab = page.url.searchParams.get('tab');
-			return page.url.pathname === '/pengaturan' && (!tab || tab === 'profil');
-		}
-		return page.url.pathname.startsWith(itemUrl) && !page.url.searchParams.has('tab');
+		return page.url.pathname === itemUrl || page.url.pathname.startsWith(itemUrl + '/');
 	}
 
 	const allNavGroups = [
@@ -88,50 +78,44 @@
 			label: 'Master Data',
 			items: [
 				{
-					title: 'Master Titik Proyek',
+					title: 'Titik Proyek',
 					url: '/proyek',
 					icon: Layers,
 					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER', 'AUDITOR']
 				},
 				{
-					title: 'Master Subkon & Mandor',
+					title: 'Subkon & Mandor',
 					url: '/subkon',
 					icon: HardHat,
 					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER', 'AUDITOR']
 				},
 				{
-					title: 'Master Rekening Kas/Bank',
-					url: '/pengaturan?tab=master_account',
+					title: 'Rekening Bank & Kas',
+					url: '/rekening',
 					icon: Landmark,
 					roles: ['DIREKTUR', 'FINANCE']
 				},
 				{
-					title: 'Master Peran & Izin (RBAC)',
-					url: '/pengaturan?tab=roles',
+					title: 'Pengguna Sistem',
+					url: '/pengguna',
+					icon: Users,
+					roles: ['DIREKTUR']
+				},
+				{
+					title: 'Peran & Hak Akses',
+					url: '/peran',
 					icon: KeyRound,
 					roles: ['DIREKTUR']
 				}
 			]
 		},
 		{
-			label: 'Pengaturan Sistem',
+			label: 'Sistem',
 			items: [
 				{
-					title: 'Profil Entitas & Risiko',
-					url: '/pengaturan?tab=profil',
-					icon: Sliders,
-					roles: ['DIREKTUR']
-				},
-				{
-					title: 'Kelola Pengguna',
-					url: '/pengaturan?tab=users',
-					icon: Users,
-					roles: ['DIREKTUR']
-				},
-				{
-					title: 'Status Database WAL',
-					url: '/pengaturan?tab=database',
-					icon: Database,
+					title: 'Pengaturan Sistem',
+					url: '/pengaturan',
+					icon: Settings,
 					roles: ['DIREKTUR']
 				}
 			]
@@ -162,8 +146,8 @@
 		</div>
 	</div>
 
-	<!-- Sidebar Navigation Links -->
-	<div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+	<!-- Sidebar Navigation Links (Compact, Clean, Spacious) -->
+	<div class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
 		{#each navGroups as group (group.label)}
 			<div>
 				<div class="px-3 mb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -185,47 +169,10 @@
 		{/each}
 	</div>
 
-	<!-- Sidebar User Profile & Role Switcher Footer (Integrated 2-Item Layout) -->
-	<div class="border-t border-slate-200 p-3 space-y-2">
-		<!-- 1. Integrated User Profile & Role Card -->
-		<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-			<div class="flex items-center gap-2.5 mb-2">
-				<div class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-800 flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-					{appState.initials}
-				</div>
-				<div class="flex-1 min-w-0">
-					<div class="text-xs font-bold text-slate-900 truncate leading-tight">{appState.currentUser}</div>
-					<div class="text-[10px] text-slate-500 font-medium truncate mt-0.5">{appState.userRoleLabel}</div>
-				</div>
-			</div>
-
-			<!-- Sleek Styled Role Dropdown Pill -->
-			<div class="relative">
-				<select
-					value={appState.currentRole}
-					onchange={(e) => appState.setRole((e.target as HTMLSelectElement).value as any)}
-					class="w-full appearance-none text-[11px] font-bold border border-slate-200 rounded-lg pl-7 pr-6 py-1.5 bg-white text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer shadow-2xs transition-all"
-					title="Ganti Role Simulasi Akun"
-				>
-					<option value="DIREKTUR">Pimpinan (Direktur)</option>
-					<option value="FINANCE">Finance (Kasir)</option>
-					<option value="SITE_MANAGER">Site Manager</option>
-				</select>
-				<ShieldCheck class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-				<ChevronDown class="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-			</div>
-		</div>
-
-		<!-- 2. Logout Button (Red Icon & Red Text - Form POST to /login?/logout) -->
-		<form method="POST" action="/login?/logout" class="w-full">
-			<button
-				type="submit"
-				class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50/70 hover:bg-rose-100 hover:text-rose-700 border border-rose-200/70 transition-colors cursor-pointer"
-			>
-				<LogOut class="w-4 h-4 text-rose-600" />
-				<span>Keluar Akun (Logout)</span>
-			</button>
-		</form>
+	<!-- Desktop Footer: Clean & Light System Info (No duplicate profile/logout here) -->
+	<div class="border-t border-slate-200 px-4 py-3 bg-slate-50/50 flex items-center justify-between text-[11px] text-slate-400">
+		<span class="font-medium text-slate-500">Pantau MBG Enterprise</span>
+		<span class="font-mono text-[10px] px-1.5 py-0.5 bg-slate-200/60 rounded text-slate-600 font-semibold">v2.4</span>
 	</div>
 
 </aside>
@@ -260,7 +207,7 @@
 				<button
 					type="button"
 					onclick={() => appState.closeMobileSidebar()}
-					class="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+					class="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
 					aria-label="Tutup Menu"
 				>
 					<X class="w-5 h-5" />
@@ -268,7 +215,7 @@
 			</div>
 
 			<!-- Mobile Nav Menu (Touch Target >= 44px each item) -->
-			<div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+			<div class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
 				{#each navGroups as group (group.label)}
 					<div>
 						<div class="px-3 mb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -291,35 +238,8 @@
 				{/each}
 			</div>
 
-			<!-- Mobile User Profile & Logout (Integrated 2-Item Layout) -->
-			<div class="border-t border-slate-200 p-4 space-y-2 bg-slate-50">
-				<!-- Integrated Card -->
-				<div class="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-					<div class="flex items-center gap-3 mb-2.5">
-						<div class="w-10 h-10 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 flex items-center justify-center font-black text-sm shrink-0">
-							{appState.initials}
-						</div>
-						<div class="flex-1 min-w-0">
-							<div class="text-sm font-bold text-slate-900 truncate leading-tight">{appState.currentUser}</div>
-							<div class="text-xs text-slate-500 font-medium truncate mt-0.5">{appState.userRoleLabel}</div>
-						</div>
-					</div>
-
-					<div class="relative">
-						<select
-							value={appState.currentRole}
-							onchange={(e) => appState.setRole((e.target as HTMLSelectElement).value as any)}
-							class="w-full h-10 appearance-none text-xs font-bold border border-slate-200 rounded-lg pl-8 pr-8 bg-slate-50 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer transition-all"
-						>
-							<option value="DIREKTUR">Pimpinan (Direktur)</option>
-							<option value="FINANCE">Finance (Kasir)</option>
-							<option value="SITE_MANAGER">Site Manager</option>
-						</select>
-						<ShieldCheck class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-						<ChevronDown class="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-					</div>
-				</div>
-
+			<!-- Mobile Compact Logout -->
+			<div class="border-t border-slate-200 p-4 bg-slate-50">
 				<form method="POST" action="/login?/logout" class="w-full">
 					<button
 						type="submit"

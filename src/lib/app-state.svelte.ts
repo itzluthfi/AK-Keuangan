@@ -6,6 +6,21 @@ class AppState {
 	currentRole = $state<'DIREKTUR' | 'FINANCE' | 'SITE_MANAGER'>('DIREKTUR');
 	userEmail = $state('azka@sppg.id');
 
+	// Global Search & Notification & Theme
+	isSearchOpen = $state(false);
+	isNotificationsOpen = $state(false);
+	theme = $state<'light' | 'dark'>('light');
+
+	constructor() {
+		if (typeof window !== 'undefined') {
+			const savedTheme = localStorage.getItem('pantau_theme') as 'light' | 'dark' | null;
+			if (savedTheme) {
+				this.theme = savedTheme;
+				document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+			}
+		}
+	}
+
 	get currentUser(): string {
 		if (this.currentRole === 'DIREKTUR') return 'Bpk. Azka (Pimpinan)';
 		if (this.currentRole === 'FINANCE') return 'Admin Finance';
@@ -38,6 +53,32 @@ class AppState {
 		else if (role === 'FINANCE') this.userEmail = 'finance@sppg.id';
 		else this.userEmail = 'mandor@sppg.id';
 	}
+
+	openSearch() {
+		this.isSearchOpen = true;
+	}
+
+	closeSearch() {
+		this.isSearchOpen = false;
+	}
+
+	toggleNotifications() {
+		this.isNotificationsOpen = !this.isNotificationsOpen;
+	}
+
+	closeNotifications() {
+		this.isNotificationsOpen = false;
+	}
+
+	toggleTheme() {
+		const next = this.theme === 'light' ? 'dark' : 'light';
+		this.theme = next;
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('pantau_theme', next);
+			document.documentElement.classList.toggle('dark', next === 'dark');
+		}
+	}
 }
 
 export const appState = new AppState();
+
