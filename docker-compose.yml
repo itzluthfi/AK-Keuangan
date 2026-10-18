@@ -1,0 +1,36 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pantau-mbg-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DB_PATH=/app/data/pantau_mbg.db
+      - SQIDS_SECRET=pantau_mbg_secure_salt_2026_xyz
+      - APP_NAME=Pantau MBG
+    volumes:
+      # Mount direktori data lokal agar database SQLite tersimpan persisten di host
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - pantau-network
+
+networks:
+  pantau-network:
+    driver: bridge

@@ -1,0 +1,293 @@
+name: CI/CD Pipeline - Pantau MBG
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.vscode/**'
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  workflow_dispatch:
+    inputs:
+      run_docker_smoke_test:
+        description: 'Jalankan Smoke Test Container Docker'
+        type: boolean
+        required: false
+        default: true
+      deploy_to_registry:
+        description: 'Build dan Push Image ke GitHub Packages (GHCR)'
+        type: boolean
+        required: false
+        default: false
+
+# Batalkan run lama jika ada commit baru pada branch/PR yang sama
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
+jobs:
+  # ============================================================================
+  # JOB 1: CODE QUALITY, TYPE-CHECK & LINT
+  # ============================================================================
+  code-quality:
+    name: Code Quality & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        id: bun-cache
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Sync SvelteKit Generated Types
+        run: bun run prepare
+
+      - name: Type Check (svelte-check)
+        run: |
+          echo "🔍 Menjalankan SvelteKit Diagnostics & TypeScript Check..."
+          bun run check
+
+      - name: Lint Format Verification (Non-blocking Warning)
+        continue-on-error: true
+        run: |
+          echo "🎨 Memeriksa format kode..."
+          bun run lint || echo "⚠️ Peringatan linting terdeteksi, melanjutkan build."
+
+  # ============================================================================
+  # JOB 2: DATABASE INTEGRITY & BUILD VALIDATION
+  # ============================================================================
+  build-and-test:
+    name: Build & Database Integrity
+    needs: code-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Restore Dependencies Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
+
+      - name: Install Dependencies if Cache Miss
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Test Database Seeder & Schema Validation
+        env:
+          DB_PATH: ./data/test_ci.db
+          NODE_ENV: test
+        run: |
+          echo "🗄️ Menguji inisialisasi SQLite database dan eksekusi seeder..."
+          mkdir -p data
+          bun run db:seed
+          test -f ./data/test_ci.db || { echo "❌ Gagal menginisialisasi database test!"; exit 1; }
+          echo "✅ Database SQLite terinisialisasi dan seeder berhasil dieksekusi."
+
+      - name: Build Standalone Server (adapter-node)
+        env:
+          NODE_ENV: production
+        run: |
+          echo "🏗️ Mengompilasi aplikasi untuk mode produksi..."
+          bun run build
+
+      - name: Verify Build Artifacts
+        run: |
+          test -f build/index.js || { echo "❌ File build/index.js tidak ditemukan!"; exit 1; }
+          test -d build/client || { echo "❌ Direktori build/client tidak ditemukan!"; exit 1; }
+          test -d build/server || { echo "❌ Direktori build/server tidak ditemukan!"; exit 1; }
+          echo "✅ Seluruh artifak produksi build/ berhasil diverifikasi."
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-build
+          path: build/
+          retention-days: 7
+
+  # ============================================================================
+  # JOB 3: DOCKER CONTAINER BUILD & SMOKE TEST
+  # ============================================================================
+  docker-smoke-test:
+    name: Docker Build & Health Check
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.event_name != 'pull_request' || github.event.inputs.run_docker_smoke_test != 'false' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker Layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: pantau-mbg:test
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Run Container Smoke Test
+        run: |
+          echo "🚀 Menjalankan container Docker uji coba..."
+          docker run -d --name test-container \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e HOST=0.0.0.0 \
+            pantau-mbg:test
+
+          echo "⏳ Menunggu container siap dan melayani request (max 30 detik)..."
+          READY=0
+          for i in $(seq 1 15); do
+            sleep 2
+            if curl -s -f http://localhost:3000/api/health > /dev/null; then
+              echo "✅ Health check berhasil pada percobaan ke-$i!"
+              READY=1
+              break
+            fi
+            echo "Menunggu container siap... ($i/15)"
+          done
+
+          if [ $READY -ne 1 ]; then
+            echo "❌ Container gagal merespons endpoint healthcheck!"
+            echo "=== LOGS CONTAINER ==="
+            docker logs test-container
+            exit 1
+          fi
+
+          echo "🔍 Menguji respons JSON endpoint /api/health..."
+          RESPONSE=$(curl -s http://localhost:3000/api/health)
+          echo "Respons: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"ok"' || { echo "❌ Respons status bukan 'ok'!"; exit 1; }
+
+          echo "🛑 Menghentikan container uji coba..."
+          docker stop test-container
+          docker rm test-container
+          echo "✅ Docker Smoke Test Lulus 100%!"
+
+      - name: Move Docker Cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
+
+  # ============================================================================
+  # JOB 4: PUBLISH DOCKER IMAGE TO GHCR (MAIN / MANUAL DISPATCH)
+  # ============================================================================
+  publish-image:
+    name: Publish Container Image (GHCR)
+    needs: [build-and-test, docker-smoke-test]
+    runs-on: ubuntu-latest
+    if: |
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      github.event_name == 'push' &&
+      !github.event.repository.fork
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+            type=ref,event=branch
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # ============================================================================
+  # JOB 5: WORKFLOW SUMMARY & STATUS REPORT
+  # ============================================================================
+  workflow-summary:
+    name: Pipeline Summary Report
+    needs: [code-quality, build-and-test, docker-smoke-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub Step Summary
+        run: |
+          STATUS_QUALITY="${{ needs.code-quality.result }}"
+          STATUS_BUILD="${{ needs.build-and-test.result }}"
+          STATUS_DOCKER="${{ needs.docker-smoke-test.result }}"
+
+          echo "## 📊 CI/CD Pipeline Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Tahapan Workflow | Status | Keterangan |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **1. Code Quality & Type Check** | $STATUS_QUALITY | TypeScript & svelte-check diagnostics |" >> $GITHUB_STEP_SUMMARY
+          echo "| **2. Build & Database Integrity** | $STATUS_BUILD | SQLite Seeder test & Node standalone build |" >> $GITHUB_STEP_SUMMARY
+          echo "| **3. Docker Smoke Test** | $STATUS_DOCKER | Multi-stage container build & /api/health check |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\` | **Branch:** \`${{ github.ref_name }}\` | **Pemicu:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
