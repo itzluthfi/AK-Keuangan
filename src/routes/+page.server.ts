@@ -43,13 +43,16 @@ export const load: PageServerLoad = async ({ url }) => {
 		// Total Beban Riil
 		const totalPengeluaran = totalBebanVendor + totalOperasional + totalFeeVendor;
 
-		// Margin
+		// Margin & Profitabilitas
 		const marginKotor = terminMasuk - totalBebanVendor;
-		const marginBersih = terminMasuk - totalPengeluaran;
-		const marginPct = terminMasuk > 0 ? (marginBersih / terminMasuk) * 100 : (p.rabKontrak > 0 ? ((p.rabKontrak - (totalRapVendor + totalFeeVendor)) / p.rabKontrak) * 100 : 0);
+		const marginBersih = terminMasuk - totalPengeluaran; // Arus Kas Berjalan Saat Ini
+		const estimasiTotalBeban = totalRapVendor > 0 ? (totalRapVendor + totalFeeVendor + totalOperasional) : totalPengeluaran;
+		const labaProyek = p.rabKontrak - (p.progresFisikPct === 100 ? totalPengeluaran : estimasiTotalBeban);
+		const labaPct = p.rabKontrak > 0 ? (labaProyek / p.rabKontrak) * 100 : 0;
+		const marginPct = labaPct;
 
-		// Warning Indicator
-		const isOverbudget = totalPengeluaran > (terminMasuk > 0 ? terminMasuk : p.rabKontrak);
+		// Warning Indicator: Overbudget jika pengeluaran riil melebihi nilai kontrak
+		const isOverbudget = totalPengeluaran > p.rabKontrak;
 		const isKasbonWarning = totalRapVendor > 0 && (totalBebanVendor / totalRapVendor) * 100 > (p.progresFisikPct + 10);
 
 		return {
@@ -73,6 +76,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			marginKotor,
 			marginBersih,
 			marginPct,
+			labaProyek,
+			labaPct,
 			isOverbudget,
 			isKasbonWarning
 		};

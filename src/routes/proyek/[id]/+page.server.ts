@@ -56,10 +56,14 @@ export const load: PageServerLoad = async ({ params }) => {
 	const cihTransactions = await db.select().from(cashTransactions).where(eq(cashTransactions.projectId, projectId)).all();
 	const totalOperasionalCih = cihTransactions.filter(c => c.tipe === 'OUT').reduce((acc, c) => acc + (c.nominal || 0), 0);
 
-	// Perhitungan Laba & Kontrol
+	// Perhitungan Laba & Kontrol Kas
 	const totalPengeluaran = totalBebanVendors + totalOperasionalCih + totalFeeVendors;
-	const marginBersih = totalTerminMasuk - totalPengeluaran;
-	const marginPct = totalTerminMasuk > 0 ? (marginBersih / totalTerminMasuk) * 100 : 0;
+	const estimasiTotalBeban = totalRapVendors > 0 ? (totalRapVendors + totalFeeVendors + totalOperasionalCih) : totalPengeluaran;
+	const labaProyek = project.rabKontrak - (project.progresFisikPct === 100 ? totalPengeluaran : estimasiTotalBeban);
+	const labaPct = project.rabKontrak > 0 ? (labaProyek / project.rabKontrak) * 100 : 0;
+	const arusKas = totalTerminMasuk - totalPengeluaran;
+	const marginBersih = arusKas;
+	const marginPct = labaPct;
 
 	return {
 		project: {
@@ -72,6 +76,9 @@ export const load: PageServerLoad = async ({ params }) => {
 			totalFeeVendors,
 			totalOperasionalCih,
 			totalPengeluaran,
+			labaProyek,
+			labaPct,
+			arusKas,
 			marginBersih,
 			marginPct
 		},

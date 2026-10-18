@@ -132,18 +132,27 @@
 			</div>
 
 			<div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
-				<div class="text-[10px] font-bold text-slate-500 uppercase">Margin Bersih</div>
+				<div class="text-[10px] font-bold text-slate-500 uppercase">Laba Proyek (Estimasi)</div>
 				{#if isSiteManager}
 					<div class="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1.5">
 						<Lock class="w-3.5 h-3.5 text-slate-400" />
 						<span>Terproteksi Direktur</span>
 					</div>
 				{:else}
-					<div class="text-base font-black {data.project.marginBersih >= 0 ? 'text-emerald-700' : 'text-rose-600'} mt-0.5 tabular-nums">
-						{formatRupiah(data.project.marginBersih)}
+					<div class="text-base font-black text-emerald-700 mt-0.5 tabular-nums">
+						{formatRupiah(data.project.labaProyek)}
 					</div>
-					<div class="text-[10px] font-bold {data.project.marginPct >= 10 ? 'text-emerald-600' : 'text-amber-600'} mt-1 tabular-nums">
-						{formatPersen(data.project.marginPct)} Margin
+					<div class="text-[10px] font-medium text-slate-500 mt-1 flex items-center justify-between">
+						<span class="font-bold text-emerald-600">{formatPersen(data.project.labaPct)} Laba</span>
+						{#if data.project.arusKas < 0}
+							<span class="text-amber-700 font-bold" title="Dana talangan kas berjalan sebelum termin berikutnya dicairkan owner">
+								Kas: -{formatRupiah(Math.abs(data.project.arusKas))} (Talangan)
+							</span>
+						{:else}
+							<span class="text-slate-600 font-medium">
+								Kas: +{formatRupiah(data.project.arusKas)}
+							</span>
+						{/if}
 					</div>
 				{/if}
 			</div>

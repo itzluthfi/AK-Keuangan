@@ -40,7 +40,7 @@
 	let activePeriod = $state('SEMUA'); // HARI_INI, 7_HARI, BULAN_INI, TAHUN_INI, SEMUA
 	let searchQuery = $state('');
 	let statusFilter = $state('ALL'); // ALL, BERJALAN, SELESAI, PERENCANAAN
-	let sortColumn = $state<'nama' | 'rabKontrak' | 'progresFisikPct' | 'terminMasuk' | 'marginBersih' | 'totalBebanVendor' | 'totalOperasional' | 'sisaTermin'>('marginBersih');
+	let sortColumn = $state<'nama' | 'rabKontrak' | 'progresFisikPct' | 'terminMasuk' | 'marginBersih' | 'labaProyek' | 'totalBebanVendor' | 'totalOperasional' | 'sisaTermin'>('labaProyek');
 	let sortDirection = $state<'asc' | 'desc'>('desc');
 
 	// Multi-Row Selection State (Set of project IDs)
@@ -149,7 +149,7 @@
 		return filteredProjects.slice(start, start + pageSize);
 	});
 
-	function toggleSort(col: 'nama' | 'rabKontrak' | 'progresFisikPct' | 'terminMasuk' | 'marginBersih' | 'totalBebanVendor' | 'totalOperasional' | 'sisaTermin') {
+	function toggleSort(col: 'nama' | 'rabKontrak' | 'progresFisikPct' | 'terminMasuk' | 'marginBersih' | 'labaProyek' | 'totalBebanVendor' | 'totalOperasional' | 'sisaTermin') {
 		if (sortColumn === col) {
 			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -886,9 +886,9 @@
 						{/if}
 
 						<th class="py-3 px-3 text-right min-w-[130px]">
-							<button type="button" onclick={() => toggleSort('marginBersih')} class="flex items-center gap-1 ml-auto hover:text-slate-900 group cursor-pointer">
-								<span class={sortColumn === 'marginBersih' ? 'text-slate-900 font-extrabold' : ''}>MARGIN BERSIH</span>
-								{#if sortColumn === 'marginBersih'}
+							<button type="button" onclick={() => toggleSort('labaProyek')} class="flex items-center gap-1 ml-auto hover:text-slate-900 group cursor-pointer">
+								<span class={sortColumn === 'labaProyek' ? 'text-slate-900 font-extrabold' : ''}>LABA PROYEK</span>
+								{#if sortColumn === 'labaProyek'}
 									{#if sortDirection === 'asc'}
 										<ArrowUp class="w-3.5 h-3.5 text-slate-900" />
 									{:else}
@@ -986,12 +986,18 @@
 								</td>
 							{/if}
 
-							<!-- Margin Bersih (Rp & %) -->
-							<td class="py-2.5 px-3 text-right tabular-nums font-extrabold {p.marginBersih < 0 ? 'text-rose-700' : 'text-slate-900'}">
-								<div>{formatRupiah(p.marginBersih)}</div>
-								<div class="text-[11px] font-bold {p.marginBersih < 0 ? 'text-rose-700' : 'text-slate-600'}">
-									{formatPersen(p.marginPct)}
-								</div>
+							<!-- Laba Proyek & Status Kas Berjalan -->
+							<td class="py-2.5 px-3 text-right tabular-nums">
+								<div class="font-extrabold text-slate-900">{formatRupiah(p.labaProyek ?? p.marginBersih)}</div>
+								{#if p.marginBersih < 0}
+									<div class="text-[10px] font-bold text-amber-700" title="Dana talangan sementara. Belum dicairkan owner: {formatRupiah(p.sisaTermin)}">
+										Kas: -{formatRupiahRingkas(Math.abs(p.marginBersih))} (Talangan)
+									</div>
+								{:else}
+									<div class="text-[10px] font-semibold text-emerald-700">
+										+{formatPersen(p.labaPct ?? p.marginPct)} Laba
+									</div>
+								{/if}
 							</td>
 
 							<!-- Sisa Piutang Klien -->
