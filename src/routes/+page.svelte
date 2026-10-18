@@ -26,7 +26,9 @@
 		BarChart3,
 		PieChart,
 		Activity,
-		Lock
+		Lock,
+		Landmark,
+		Wallet
 	} from 'lucide-svelte';
 	import { page } from '$app/state';
 
@@ -308,10 +310,10 @@
 			</div>
 		</div>
 
-		<!-- Kartu 4: MARGIN BERSIH (THE BOTTOM LINE) -->
+		<!-- Kartu 4: MARGIN BERSIH -->
 		<div class="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-all">
 			<div class="flex items-center justify-between gap-1">
-				<span class="text-xs sm:text-sm font-semibold text-slate-700 truncate">Margin Bersih (Riil)</span>
+				<span class="text-xs sm:text-sm font-semibold text-slate-700 truncate">Margin Bersih</span>
 				<TrendingUp class="w-4 h-4 {data.kpi.totalMarginBersih >= 0 ? 'text-emerald-600' : 'text-rose-600'} shrink-0" />
 			</div>
 			<div class="my-2 sm:my-3">
@@ -333,59 +335,59 @@
 		</div>
 	</div>
 
-	<!-- Mini Bar Rekening Induk BSI, Kas Kecil (CIH), & Overhead Kantor (Sesuai Excel Kas Besar BSI) -->
-	<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-		<div class="flex items-center justify-between p-3.5 bg-slate-900 text-white rounded-xl shadow-xs">
-			<div class="flex items-center gap-2.5">
-				<div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-					BSI
+	<!-- Ringkasan Saldo Rekening Operasional & Kas (Clean Light Mode) -->
+	<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+		<!-- 1. Rekening BSI Operasional -->
+		<div class="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs flex items-center justify-between">
+			<div class="flex items-center gap-3">
+				<div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex items-center justify-center shrink-0">
+					<Landmark class="w-4 h-4 text-slate-600" />
 				</div>
 				<div>
-					<div class="text-[11px] text-slate-400 font-medium">Saldo Rekening Bank BSI</div>
+					<div class="text-xs text-slate-500 font-medium">Rekening Operasional (BSI)</div>
 					{#if isSiteManager}
-						<div class="text-xs font-bold text-slate-400 flex items-center gap-1">
+						<div class="text-xs font-bold text-slate-400 flex items-center gap-1 mt-0.5">
 							<Lock class="w-3 h-3" />
-							<span>Otoritas Direktur</span>
+							<span>Terproteksi Direktur</span>
 						</div>
 					{:else}
-						<div class="text-sm font-black text-white tabular-nums">{formatRupiah(data.kpi.saldoBsi)}</div>
+						<div class="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums tracking-tight mt-0.5">{formatRupiah(data.kpi.saldoBsi)}</div>
 					{/if}
 				</div>
 			</div>
-			<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">Sinkron Excel</span>
 		</div>
 
-		<div class="flex items-center justify-between p-3.5 bg-white border border-slate-200/90 rounded-xl shadow-2xs">
-			<div class="flex items-center gap-2.5">
-				<div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-xs">
-					CIH
+		<!-- 2. Kas Kecil Lapangan (CIH) -->
+		<div class="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs flex items-center justify-between">
+			<div class="flex items-center gap-3">
+				<div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex items-center justify-center shrink-0">
+					<Wallet class="w-4 h-4 text-slate-600" />
 				</div>
 				<div>
-					<div class="text-[11px] text-slate-500 font-medium">Kas Kecil Lapangan (CIH)</div>
-					<div class="text-sm font-black text-slate-900 tabular-nums">{formatRupiah(data.kpi.saldoCih)}</div>
+					<div class="text-xs text-slate-500 font-medium">Kas Operasional Lapangan (CIH)</div>
+					<div class="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums tracking-tight mt-0.5">{formatRupiah(data.kpi.saldoCih)}</div>
 				</div>
 			</div>
-			<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">207 Transaksi Riil</span>
 		</div>
 
-		<div class="flex items-center justify-between p-3.5 bg-white border border-slate-200/90 rounded-xl shadow-2xs">
-			<div class="flex items-center gap-2.5">
-				<div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
-					HO
+		<!-- 3. Biaya Overhead Kantor -->
+		<div class="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs flex items-center justify-between">
+			<div class="flex items-center gap-3">
+				<div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex items-center justify-center shrink-0">
+					<Building2 class="w-4 h-4 text-slate-600" />
 				</div>
 				<div>
-					<div class="text-[11px] text-slate-500 font-medium">Overhead Holding (Gaji & Tagihan)</div>
+					<div class="text-xs text-slate-500 font-medium">Biaya Overhead Kantor</div>
 					{#if isSiteManager}
-						<div class="text-xs font-bold text-slate-400 flex items-center gap-1">
+						<div class="text-xs font-bold text-slate-400 flex items-center gap-1 mt-0.5">
 							<Lock class="w-3 h-3" />
-							<span>Otoritas Direktur</span>
+							<span>Terproteksi Direktur</span>
 						</div>
 					{:else}
-						<div class="text-sm font-black text-slate-900 tabular-nums">{formatRupiah(data.kpi.totalOverheadKantor)}</div>
+						<div class="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums tracking-tight mt-0.5">{formatRupiah(data.kpi.totalOverheadKantor)}</div>
 					{/if}
 				</div>
 			</div>
-			<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">5 Pos Operasional</span>
 		</div>
 	</div>
 
@@ -397,7 +399,7 @@
 			<div class="flex items-start justify-between pb-4 border-b border-slate-100 mb-4">
 				<div>
 					<h2 class="text-sm sm:text-base font-bold text-slate-900">Realisasi Kas Dapur MBG</h2>
-					<p class="text-xs font-semibold text-slate-600 mt-0.5">Termin Cair vs Pengeluaran Riil (6 Titik Terbesar)</p>
+					<p class="text-xs text-slate-500 mt-0.5">Termin Cair vs Pengeluaran (6 Titik Terbesar)</p>
 				</div>
 				<!-- Legend Kontras Tinggi dengan Aturan Keuangan: Naik Hijau, Turun Merah -->
 				<div class="flex items-center gap-3 text-xs font-semibold text-slate-700">
@@ -433,12 +435,12 @@
 									title="Termin Masuk: {formatRupiah(p.terminMasuk)}"
 								></div>
 							</div>
-							<!-- Bar Pengeluaran Riil (Merah Keuangan / Rose) -->
+							<!-- Bar Pengeluaran (Merah Keuangan / Rose) -->
 							<div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex items-center">
 								<div
 									class="bg-rose-500 h-full rounded-full transition-all duration-300"
 									style="width: {p.bebanHeightPct}%"
-									title="Pengeluaran Riil: {formatRupiah(p.totalPengeluaran)}"
+									title="Pengeluaran: {formatRupiah(p.totalPengeluaran)}"
 								></div>
 							</div>
 						</div>
@@ -563,7 +565,7 @@
 						{:else}
 							<span class="text-[9px] uppercase tracking-wider text-slate-500 font-bold">TOTAL BEBAN</span>
 							<span class="text-sm font-black text-slate-900 tabular-nums">{formatRupiahRingkas(totalExp)}</span>
-							<span class="text-[9px] text-slate-400 font-semibold">100% Biaya Riil</span>
+							<span class="text-[9px] text-slate-400 font-medium">Total Beban</span>
 						{/if}
 					</div>
 				</div>

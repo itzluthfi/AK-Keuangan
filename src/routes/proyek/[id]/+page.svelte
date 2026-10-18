@@ -132,7 +132,7 @@
 			</div>
 
 			<div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
-				<div class="text-[10px] font-bold text-slate-500 uppercase">Margin Bersih Riil</div>
+				<div class="text-[10px] font-bold text-slate-500 uppercase">Margin Bersih</div>
 				{#if isSiteManager}
 					<div class="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1.5">
 						<Lock class="w-3.5 h-3.5 text-slate-400" />
