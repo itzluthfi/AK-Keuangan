@@ -1,6 +1,6 @@
 import type { PageServerLoad, Actions } from './$types';
 import { db } from '#lib/server/db';
-import { projects, users, masterVendors, masterAccounts } from '#lib/server/db/schema';
+import { projects, users, masterVendors, masterAccounts, roles } from '#lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 
@@ -15,6 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			email: users.email,
 			namaLengkap: users.namaLengkap,
 			role: users.role,
+			roleId: users.roleId,
 			noHp: users.noHp,
 			isActive: users.isActive,
 			createdAt: users.createdAt
@@ -36,6 +37,24 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.orderBy(masterAccounts.tipe)
 		.all();
 
+	// 4. Ambil master peran & izin (Dynamic RBAC)
+	const rawRoles = await db
+		.select()
+		.from(roles)
+		.orderBy(roles.id)
+		.all();
+
+	const rolesList = rawRoles.map(r => ({
+		...r,
+		permissionsList: (() => {
+			try {
+				return JSON.parse(r.permissions) as string[];
+			} catch {
+				return [];
+			}
+		})()
+	}));
+
 	return {
 		settings: {
 			companyName: 'Konsorsium Mitra SPPG MBG Jawa Timur',
@@ -53,6 +72,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		usersList,
 		masterVendorsList,
 		masterAccountsList,
+		rolesList,
 		currentUser: locals.user
 	};
 };
@@ -212,5 +232,69 @@ export const actions: Actions = {
 
 		await db.delete(masterAccounts).where(eq(masterAccounts.id, id));
 		return { success: true, message: 'Rekening kas berhasil dihapus dari master data.' };
+	},
+
+	addRole: async ({ request }) => {
+		const form = await request.formData();
+		const kode = String(form.get('kode') || '').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+		const nama = String(form.get('nama') || '').trim();
+		const deskripsi = String(form.get('deskripsi') || '').trim();
+		const permissions = form.getAll('permissions') as string[];
+
+		if (!kode || !nama) {
+			return fail(400, { success: false, error: 'Kode dan nama peran wajib diisi.' });
+		}
+
+		try {
+			await db.insert(roles).values({
+				kode,
+				nama,
+				deskripsi: deskripsi || null,
+				permissions: JSON.stringify(permissions),
+				isSystem: false
+			});
+			return { success: true, message: `Peran baru "${nama}" (${kode}) berhasil ditambahkan.` };
+		} catch (e: any) {
+			return fail(400, { success: false, error: 'Gagal menambah peran: Kode peran sudah terdaftar.' });
+		}
+	},
+
+	editRole: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		const nama = String(form.get('nama') || '').trim();
+		const deskripsi = String(form.get('deskripsi') || '').trim();
+		const permissions = form.getAll('permissions') as string[];
+
+		if (!id || !nama) {
+			return fail(400, { success: false, error: 'ID dan nama peran wajib diisi.' });
+		}
+
+		try {
+			await db.update(roles).set({
+				nama,
+				deskripsi: deskripsi || null,
+				permissions: JSON.stringify(permissions)
+			}).where(eq(roles.id, id));
+
+			return { success: true, message: `Hak akses peran "${nama}" berhasil diperbarui.` };
+		} catch (e: any) {
+			return fail(400, { success: false, error: 'Gagal memperbarui izin peran.' });
+		}
+	},
+
+	deleteRole: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		if (!id) return fail(400, { success: false, error: 'ID peran tidak valid.' });
+
+		const targetRole = await db.select().from(roles).where(eq(roles.id, id)).get();
+		if (targetRole?.isSystem) {
+			return fail(400, { success: false, error: 'Peran sistem bawaan tidak dapat dihapus.' });
+		}
+
+		await db.delete(roles).where(eq(roles.id, id));
+		return { success: true, message: 'Peran berhasil dihapus dari sistem.' };
 	}
 };
+

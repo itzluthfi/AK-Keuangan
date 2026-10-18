@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import {
 		Building2,
 		ShieldAlert,
@@ -18,7 +19,10 @@
 		Phone,
 		Lock,
 		Check,
-		X
+		X,
+		Edit3,
+		Plus,
+		Shield
 	} from 'lucide-svelte';
 	import { toast } from 'svelte-french-toast';
 
@@ -33,12 +37,116 @@
 	let isSaving = $state(false);
 
 	// Tabs
-	let activeSection = $state<'profil' | 'users' | 'master_vendor' | 'master_account' | 'risiko' | 'database'>('profil');
+	let activeSection = $state<'profil' | 'users' | 'roles' | 'master_vendor' | 'master_account' | 'risiko' | 'database'>('profil');
 
-	// Modal State
+	$effect(() => {
+		const paramTab = page.url.searchParams.get('tab');
+		if (paramTab && ['profil', 'users', 'roles', 'master_vendor', 'master_account', 'risiko', 'database'].includes(paramTab)) {
+			activeSection = paramTab as any;
+		}
+	});
+
+	// Modal States
 	let showAddUserModal = $state(false);
 	let showAddVendorModal = $state(false);
 	let showAddAccountModal = $state(false);
+	let showAddRoleModal = $state(false);
+	let showEditRoleModal = $state(false);
+	let selectedRoleForEdit = $state<any>(null);
+	let editRolePermissions = $state<string[]>([]);
+
+	const ALL_PERMISSIONS = [
+		{
+			category: '📊 Dashboard & Portofolio',
+			items: [
+				{ key: 'dashboard.view', label: 'Lihat Kas Besar & Portofolio' },
+				{ key: 'dashboard.view_profit', label: 'Lihat Margin Laba Bersih Proyek' }
+			]
+		},
+		{
+			category: '🏗️ Titik Proyek SPPG',
+			items: [
+				{ key: 'proyek.view', label: 'Lihat Daftar & Detail Proyek' },
+				{ key: 'proyek.create', label: 'Tambah Titik Proyek Baru' },
+				{ key: 'proyek.edit', label: 'Ubah Data Kontrak & Nilai SPK' },
+				{ key: 'proyek.delete', label: 'Hapus / Arsipkan Proyek' },
+				{ key: 'proyek.update_progres', label: 'Update Progres Fisik (%)' }
+			]
+		},
+		{
+			category: '👷 Subkon & Mandor Lapangan',
+			items: [
+				{ key: 'subkon.view', label: 'Lihat Daftar & Riwayat Subkon' },
+				{ key: 'subkon.manage', label: 'Tambah & Kelola Master Subkon' }
+			]
+		},
+		{
+			category: '📑 Termin & Kontrak SPK',
+			items: [
+				{ key: 'termin.view', label: 'Lihat Rencana & Realisasi Termin' },
+				{ key: 'termin.create_edit', label: 'Catat Pencairan & Edit Termin' },
+				{ key: 'termin.delete', label: 'Hapus Catatan Termin' }
+			]
+		},
+		{
+			category: '💳 Kasbon Vendor & Mandor',
+			items: [
+				{ key: 'kasbon.view', label: 'Lihat Mutasi Kasbon Subkon' },
+				{ key: 'kasbon.create', label: 'Catat Pengajuan Kasbon Baru' },
+				{ key: 'kasbon.approve', label: 'Approval Pencairan Kasbon' },
+				{ key: 'kasbon.delete', label: 'Hapus Mutasi Kasbon' }
+			]
+		},
+		{
+			category: '🔄 Cash Pooling & Kasir CIH',
+			items: [
+				{ key: 'pooling.view', label: 'Lihat Aliran Cash Pooling Holding' },
+				{ key: 'pooling.manage', label: 'Tarik Dana / Suntik Talangan Kas' },
+				{ key: 'cih.view', label: 'Lihat Buku Kasir Lapangan (CIH)' },
+				{ key: 'cih.manage', label: 'Input Pengeluaran Operasional CIH' }
+			]
+		},
+		{
+			category: '📄 Faktur & Tagihan Invoice',
+			items: [
+				{ key: 'invoice.view', label: 'Lihat Daftar Faktur Tagihan' },
+				{ key: 'invoice.create', label: 'Buat & Terbitkan Faktur Baru' },
+				{ key: 'invoice.print', label: 'Download & Cetak PDF Faktur' }
+			]
+		},
+		{
+			category: '📈 Pelaporan Eksekutif',
+			items: [
+				{ key: 'laporan.view', label: 'Lihat Rekapitulasi Laba Rugi' },
+				{ key: 'laporan.export', label: 'Export Rekap Excel & Cetak PDF' }
+			]
+		},
+		{
+			category: '⚙️ Master Data & Pengaturan',
+			items: [
+				{ key: 'master.view', label: 'Akses Halaman Master Data' },
+				{ key: 'master.manage', label: 'Kelola Akun Kas & Rekening Bank' },
+				{ key: 'pengaturan.view', label: 'Lihat Pengaturan Sistem' },
+				{ key: 'pengaturan.roles', label: 'Kelola Peran & Hak Akses (RBAC)' },
+				{ key: 'pengaturan.users', label: 'Kelola Pengguna Sistem' },
+				{ key: 'pengaturan.system', label: 'Akses Parameter Risiko & Database WAL' }
+			]
+		}
+	];
+
+	function openEditRole(role: any) {
+		selectedRoleForEdit = role;
+		editRolePermissions = [...role.permissionsList];
+		showEditRoleModal = true;
+	}
+
+	function togglePermission(key: string) {
+		if (editRolePermissions.includes(key)) {
+			editRolePermissions = editRolePermissions.filter(k => k !== key);
+		} else {
+			editRolePermissions = [...editRolePermissions, key];
+		}
+	}
 </script>
 
 <svelte:head>
@@ -54,7 +162,7 @@
 				Pengaturan Sistem & Master Data
 			</h1>
 			<p class="text-xs text-slate-500 mt-0.5">
-				Kontrol pengguna (RBAC), direktori master subkon, rekening kas holding, dan parameter risiko.
+				Kontrol peran & izin (Dynamic RBAC), pengguna, master rekening kas, subkon, dan parameter operasional.
 			</p>
 		</div>
 
@@ -66,8 +174,8 @@
 		</div>
 	</div>
 
-	<!-- Section Selector Tabs (Clean SvelteForge Style) -->
-	<div class="flex items-center gap-1.5 border-b border-slate-200 overflow-x-auto pb-px">
+	<!-- Section Selector Tabs -->
+	<div class="flex items-center gap-1.5 border-b border-slate-200 overflow-x-auto pb-px scrollbar-none">
 		<button
 			type="button"
 			onclick={() => activeSection = 'profil'}
@@ -86,7 +194,18 @@
 		>
 			<span class="flex items-center gap-1.5">
 				<Users class="w-3.5 h-3.5" />
-				<span>Pengguna & Hak Akses ({data.usersList.length})</span>
+				<span>Kelola Pengguna ({data.usersList.length})</span>
+			</span>
+		</button>
+
+		<button
+			type="button"
+			onclick={() => activeSection = 'roles'}
+			class="px-3.5 py-2 text-xs font-bold border-b-2 transition-colors whitespace-nowrap {activeSection === 'roles' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}"
+		>
+			<span class="flex items-center gap-1.5">
+				<KeyRound class="w-3.5 h-3.5" />
+				<span>Master Peran & Izin ({data.rolesList.length})</span>
 			</span>
 		</button>
 
@@ -257,7 +376,8 @@
 
 			<!-- Tabel Pengguna -->
 			<div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-				<div class="overflow-x-auto">
+				<!-- Desktop Table View -->
+				<div class="hidden md:block overflow-x-auto">
 					<table class="w-full text-left border-collapse text-xs">
 						<thead>
 							<tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
@@ -283,13 +403,9 @@
 										</div>
 									</td>
 									<td class="py-3 px-4">
-										{#if u.role === 'DIREKTUR'}
-											<span class="px-2.5 py-0.5 rounded-full bg-slate-900 text-white font-extrabold text-[10px]">DIREKTUR</span>
-										{:else if u.role === 'FINANCE'}
-											<span class="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-extrabold text-[10px] border border-blue-200">FINANCE</span>
-										{:else}
-											<span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[10px] border border-emerald-200">SITE MANAGER</span>
-										{/if}
+										<span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide {u.role === 'DIREKTUR' ? 'bg-slate-900 text-white' : u.role === 'FINANCE' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+											{u.role}
+										</span>
 									</td>
 									<td class="py-3 px-4 font-mono text-slate-600">
 										{u.noHp || '-'}
@@ -356,10 +472,192 @@
 						</tbody>
 					</table>
 				</div>
+
+				<!-- Mobile Cards View for Users -->
+				<div class="md:hidden divide-y divide-slate-100">
+					{#each data.usersList as u (u.id)}
+						<div class="p-4 space-y-3">
+							<div class="flex items-start justify-between gap-2">
+								<div class="flex items-center gap-2.5">
+									<div class="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+										{u.namaLengkap.slice(0, 2).toUpperCase()}
+									</div>
+									<div>
+										<div class="font-bold text-slate-900 text-xs">{u.namaLengkap}</div>
+										<div class="text-[11px] text-slate-500 font-mono">@{u.username} &bull; {u.email || '-'}</div>
+									</div>
+								</div>
+								<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase {u.role === 'DIREKTUR' ? 'bg-slate-900 text-white' : u.role === 'FINANCE' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+									{u.role}
+								</span>
+							</div>
+
+							<div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+								<div>
+									<span class="text-slate-400 block text-[10px]">Kontak WhatsApp</span>
+									<span class="font-mono text-slate-700">{u.noHp || '-'}</span>
+								</div>
+								<div>
+									<span class="text-slate-400 block text-[10px]">Status Akun</span>
+									{#if u.isActive}
+										<span class="text-emerald-700 font-bold">Aktif</span>
+									{:else}
+										<span class="text-slate-400 font-semibold">Nonaktif</span>
+									{/if}
+								</div>
+							</div>
+
+							<div class="flex items-center justify-end gap-2 pt-1">
+								<form
+									method="POST"
+									action="?/toggleUserStatus"
+									use:enhance={() => {
+										return async ({ update, result }) => {
+											await update();
+											if (result.type === 'success') toast.success('Status user berhasil diubah.');
+										};
+									}}
+								>
+									<input type="hidden" name="id" value={u.id} />
+									<input type="hidden" name="isActive" value={u.isActive ? '1' : '0'} />
+									<button
+										type="submit"
+										class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 {u.isActive ? 'text-amber-700 bg-amber-50/50' : 'text-emerald-700 bg-emerald-50/50'} cursor-pointer"
+									>
+										{u.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+									</button>
+								</form>
+
+								<form
+									method="POST"
+									action="?/deleteUser"
+									use:enhance={() => {
+										if (!confirm(`Hapus pengguna ${u.namaLengkap}?`)) return () => {};
+										return async ({ update, result }) => {
+											await update();
+											if (result.type === 'success') toast.success('User berhasil dihapus.');
+										};
+									}}
+								>
+									<input type="hidden" name="id" value={u.id} />
+									<button
+										type="submit"
+										class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 cursor-pointer"
+										title="Hapus Pengguna"
+									>
+										<Trash2 class="w-3.5 h-3.5" />
+									</button>
+								</form>
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
 
-	<!-- TAB 3: MASTER SUBKON & MANDOR -->
+	<!-- TAB: MASTER PERAN & HAK AKSES (DYNAMIC RBAC) -->
+	{:else if activeSection === 'roles'}
+		<div class="space-y-5">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+				<div>
+					<h2 class="text-sm font-bold text-slate-900">Direktori Peran & Matriks Hak Akses (Dynamic RBAC)</h2>
+					<p class="text-xs text-slate-500">Konfigurasi hak akses granular per menu, halaman, dan fitur untuk setiap peran sistem.</p>
+				</div>
+				<button
+					type="button"
+					onclick={() => showAddRoleModal = true}
+					class="px-3.5 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+				>
+					<Plus class="w-3.5 h-3.5" />
+					<span>+ Tambah Peran Baru</span>
+				</button>
+			</div>
+
+			<!-- Grid Daftar Peran -->
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				{#each data.rolesList as r (r.id)}
+					<div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
+						<div class="space-y-2.5">
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-2">
+									<span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider {r.isSystem ? 'bg-slate-900 text-white' : 'bg-indigo-100 text-indigo-800 border border-indigo-200'}">
+										{r.kode}
+									</span>
+									{#if r.isSystem}
+										<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold text-[10px] border border-slate-200/60">
+											Sistem
+										</span>
+									{:else}
+										<span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-200/60">
+											Kustom
+										</span>
+									{/if}
+								</div>
+								<span class="text-xs font-mono font-bold text-slate-500">
+									{r.permissionsList.length} Izin Aktif
+								</span>
+							</div>
+
+							<div>
+								<h3 class="text-sm font-bold text-slate-900">{r.nama}</h3>
+								<p class="text-xs text-slate-500 mt-1 leading-relaxed">{r.deskripsi || 'Tidak ada deskripsi peran.'}</p>
+							</div>
+
+							<!-- Preview Badge Izin Ringkas -->
+							<div class="flex flex-wrap gap-1 pt-1">
+								{#each r.permissionsList.slice(0, 5) as p}
+									<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[9px]">
+										{p}
+									</span>
+								{/each}
+								{#if r.permissionsList.length > 5}
+									<span class="px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 font-mono text-[9px]">
+										+{r.permissionsList.length - 5} lainnya
+									</span>
+								{/if}
+							</div>
+						</div>
+
+						<div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+							<button
+								type="button"
+								onclick={() => openEditRole(r)}
+								class="px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+							>
+								<Sliders class="w-3.5 h-3.5 text-slate-600" />
+								<span>Atur Matriks Izin</span>
+							</button>
+
+							{#if !r.isSystem}
+								<form
+									method="POST"
+									action="?/deleteRole"
+									use:enhance={() => {
+										if (!confirm(`Hapus peran "${r.nama}"? Pengguna dengan peran ini akan kehilangan akses.`)) return () => {};
+										return async ({ update, result }) => {
+											await update();
+											if (result.type === 'success') toast.success('Peran berhasil dihapus.');
+											else if (result.type === 'failure') toast.error(String((result.data as any)?.error || 'Gagal menghapus peran.'));
+										};
+									}}
+								>
+									<input type="hidden" name="id" value={r.id} />
+									<button
+										type="submit"
+										class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+										title="Hapus Peran"
+									>
+										<Trash2 class="w-4 h-4" />
+									</button>
+								</form>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+
+	<!-- TAB 4: MASTER SUBKON & MANDOR -->
 	{:else if activeSection === 'master_vendor'}
 		<div class="space-y-5">
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -378,7 +676,8 @@
 			</div>
 
 			<div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-				<div class="overflow-x-auto">
+				<!-- Desktop Table View -->
+				<div class="hidden md:block overflow-x-auto">
 					<table class="w-full text-left border-collapse text-xs">
 						<thead>
 							<tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
@@ -438,10 +737,60 @@
 						</tbody>
 					</table>
 				</div>
+
+				<!-- Mobile Cards View for Subkon -->
+				<div class="md:hidden divide-y divide-slate-100">
+					{#each data.masterVendorsList as v (v.id)}
+						<div class="p-4 space-y-3">
+							<div class="flex items-start justify-between gap-2">
+								<div>
+									<div class="font-bold text-slate-900 text-xs">{v.nama}</div>
+									<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-[10px] border border-slate-200/70 inline-block mt-1">
+										{v.bidang}
+									</span>
+								</div>
+								<form
+									method="POST"
+									action="?/deleteMasterVendor"
+									use:enhance={() => {
+										if (!confirm(`Hapus subkon ${v.nama}?`)) return () => {};
+										return async ({ update, result }) => {
+											await update();
+											if (result.type === 'success') toast.success('Subkon berhasil dihapus.');
+										};
+									}}
+								>
+									<input type="hidden" name="id" value={v.id} />
+									<button
+										type="submit"
+										class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+										title="Hapus Subkon"
+									>
+										<Trash2 class="w-3.5 h-3.5" />
+									</button>
+								</form>
+							</div>
+
+							<div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1 text-[11px]">
+								<div class="text-slate-600 font-mono">
+									{#if v.bankRekening}
+										<div><span class="font-bold">{v.bankNama}:</span> {v.bankRekening}</div>
+										<div class="text-[10px] text-slate-400">a/n {v.bankAtasNama || v.nama}</div>
+									{:else}
+										<span class="text-slate-400 italic">Rekening belum diset</span>
+									{/if}
+								</div>
+								{#if v.catatan}
+									<div class="text-slate-500 pt-1 border-t border-slate-200/50 text-[10px]">{v.catatan}</div>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
 
-	<!-- TAB 4: MASTER REKENING KAS -->
+	<!-- TAB 5: MASTER REKENING KAS -->
 	{:else if activeSection === 'master_account'}
 		<div class="space-y-5">
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -638,9 +987,9 @@
 					<div class="space-y-1">
 						<label for="role" class="text-xs font-semibold text-slate-700">Otoritas Role</label>
 						<select id="role" name="role" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-semibold bg-white">
-							<option value="SITE_MANAGER">SITE_MANAGER (Mandor Lapangan)</option>
-							<option value="FINANCE">FINANCE (Kasir / Pembukuan)</option>
-							<option value="DIREKTUR">DIREKTUR (Pimpinan)</option>
+							{#each data.rolesList as r}
+								<option value={r.kode}>{r.kode} ({r.nama})</option>
+							{/each}
 						</select>
 					</div>
 				</div>
@@ -874,3 +1223,241 @@
 		</div>
 	</div>
 {/if}
+
+<!-- MODAL: TAMBAH PERAN BARU -->
+{#if showAddRoleModal}
+	<div 
+		class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-150">
+			<div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+				<div class="flex items-center gap-2.5">
+					<div class="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+						<KeyRound class="w-4 h-4 text-white" />
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-slate-900">Tambah Peran & Hak Akses Baru</h3>
+						<p class="text-[11px] text-slate-500">Definisikan peran kustom dan pilih izin akses per modul.</p>
+					</div>
+				</div>
+				<button 
+					type="button" 
+					onclick={() => showAddRoleModal = false}
+					class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+				>
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<form
+				method="POST"
+				action="?/addRole"
+				use:enhance={() => {
+					return async ({ update, result }) => {
+						await update();
+						if (result.type === 'success') {
+							showAddRoleModal = false;
+							toast.success('Peran baru berhasil ditambahkan!');
+						} else if (result.type === 'failure') {
+							toast.error(String((result.data as any)?.error || 'Gagal menambah peran.'));
+						}
+					};
+				}}
+				class="space-y-4 overflow-y-auto pr-1 flex-1"
+			>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+					<div class="space-y-1">
+						<label for="new_role_kode" class="text-xs font-semibold text-slate-700">Kode Peran (Huruf Kapital)</label>
+						<input id="new_role_kode" name="kode" required type="text" placeholder="QC_LAPANGAN" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono uppercase" />
+					</div>
+					<div class="space-y-1">
+						<label for="new_role_nama" class="text-xs font-semibold text-slate-700">Nama Peran Lengkap</label>
+						<input id="new_role_nama" name="nama" required type="text" placeholder="Quality Control & Pengawas Mutu" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+					</div>
+				</div>
+
+				<div class="space-y-1">
+					<label for="new_role_desc" class="text-xs font-semibold text-slate-700">Deskripsi Cakupan Tugas</label>
+					<input id="new_role_desc" name="deskripsi" type="text" placeholder="Bertanggung jawab memverifikasi progres fisik dan kualitas titik SPPG." class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+				</div>
+
+				<!-- Permissions Matrix Checklist -->
+				<div class="space-y-3 pt-2 border-t border-slate-100">
+					<div class="flex items-center justify-between">
+						<div class="text-xs font-bold text-slate-900">Matriks Hak Akses & Fitur</div>
+						<span class="text-[11px] text-slate-400">Centang fitur yang diperbolehkan</span>
+					</div>
+
+					<div class="space-y-4">
+						{#each ALL_PERMISSIONS as cat}
+							<div class="bg-slate-50/80 rounded-xl p-3 border border-slate-200/80 space-y-2">
+								<div class="text-xs font-bold text-slate-800">{cat.category}</div>
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+									{#each cat.items as item}
+										<label class="flex items-center gap-2 p-1.5 rounded-lg bg-white border border-slate-200/60 hover:border-slate-300 text-xs cursor-pointer transition-colors">
+											<input type="checkbox" name="permissions" value={item.key} class="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-3.5 h-3.5" />
+											<span class="text-slate-700 text-[11px] select-none">{item.label}</span>
+										</label>
+									{/each}
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 shrink-0 sticky bottom-0 bg-white">
+					<button 
+						type="button" 
+						onclick={() => showAddRoleModal = false}
+						class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+					>
+						Batal
+					</button>
+					<button 
+						type="submit" 
+						class="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+					>
+						Simpan Peran Baru
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- MODAL: ATUR MATRIKS IZIN PERAN (EDIT ROLE) -->
+{#if showEditRoleModal && selectedRoleForEdit}
+	<div 
+		class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-150">
+			<div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+				<div class="flex items-center gap-2.5">
+					<div class="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+						<Sliders class="w-4 h-4 text-white" />
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-slate-900">
+							Atur Matriks Izin: {selectedRoleForEdit.nama}
+						</h3>
+						<p class="text-[11px] text-slate-500 font-mono">
+							Kode: {selectedRoleForEdit.kode} {selectedRoleForEdit.isSystem ? '• (Peran Sistem Bawaan)' : '• (Peran Kustom)'}
+						</p>
+					</div>
+				</div>
+				<button 
+					type="button" 
+					onclick={() => showEditRoleModal = false}
+					class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+				>
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<form
+				method="POST"
+				action="?/editRole"
+				use:enhance={() => {
+					return async ({ update, result }) => {
+						await update();
+						if (result.type === 'success') {
+							showEditRoleModal = false;
+							toast.success(`Hak akses peran ${selectedRoleForEdit.nama} berhasil diperbarui!`);
+						} else if (result.type === 'failure') {
+							toast.error(String((result.data as any)?.error || 'Gagal memperbarui izin peran.'));
+						}
+					};
+				}}
+				class="space-y-4 overflow-y-auto pr-1 flex-1"
+			>
+				<input type="hidden" name="id" value={selectedRoleForEdit.id} />
+
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+					<div class="space-y-1">
+						<label for="edit_role_nama" class="text-xs font-semibold text-slate-700">Nama Peran</label>
+						<input id="edit_role_nama" name="nama" required type="text" value={selectedRoleForEdit.nama} class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+					</div>
+					<div class="space-y-1">
+						<label for="edit_role_desc" class="text-xs font-semibold text-slate-700">Deskripsi Singkat</label>
+						<input id="edit_role_desc" name="deskripsi" type="text" value={selectedRoleForEdit.deskripsi || ''} class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+					</div>
+				</div>
+
+				<!-- Permissions Matrix Checklist -->
+				<div class="space-y-3 pt-2 border-t border-slate-100">
+					<div class="flex items-center justify-between">
+						<div class="text-xs font-bold text-slate-900">
+							Matriks Hak Akses ({editRolePermissions.length} Izin Dipilih)
+						</div>
+						<div class="flex items-center gap-2">
+							<button
+								type="button"
+								onclick={() => {
+									const allKeys: string[] = [];
+									ALL_PERMISSIONS.forEach(cat => cat.items.forEach(i => allKeys.push(i.key)));
+									editRolePermissions = allKeys;
+								}}
+								class="text-[11px] font-semibold text-slate-600 hover:text-slate-900 underline"
+							>
+								Pilih Semua
+							</button>
+							<span class="text-slate-300">&bull;</span>
+							<button
+								type="button"
+								onclick={() => { editRolePermissions = []; }}
+								class="text-[11px] font-semibold text-slate-600 hover:text-slate-900 underline"
+							>
+								Kosongkan
+							</button>
+						</div>
+					</div>
+
+					<div class="space-y-4">
+						{#each ALL_PERMISSIONS as cat}
+							<div class="bg-slate-50/80 rounded-xl p-3 border border-slate-200/80 space-y-2">
+								<div class="text-xs font-bold text-slate-800">{cat.category}</div>
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+									{#each cat.items as item}
+										{@const isChecked = editRolePermissions.includes(item.key)}
+										<label class="flex items-center gap-2 p-1.5 rounded-lg border text-xs cursor-pointer transition-colors {isChecked ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200/60 hover:border-slate-300 text-slate-700'}">
+											<input
+												type="checkbox"
+												name="permissions"
+												value={item.key}
+												checked={isChecked}
+												onchange={() => togglePermission(item.key)}
+												class="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-3.5 h-3.5"
+											/>
+											<span class="text-[11px] select-none font-medium truncate">{item.label}</span>
+										</label>
+									{/each}
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 shrink-0 sticky bottom-0 bg-white">
+					<button 
+						type="button" 
+						onclick={() => showEditRoleModal = false}
+						class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+					>
+						Batal
+					</button>
+					<button 
+						type="submit" 
+						class="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+					>
+						Simpan Perubahan Izin
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatRupiah, formatPersen, formatTanggal } from '#lib/utils';
-	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-french-toast';
 	import {
 		ArrowLeft,
 		Plus,
@@ -13,7 +14,9 @@
 		FileSpreadsheet,
 		X,
 		ShieldAlert,
-		Lock
+		Lock,
+		Trash2,
+		Edit3
 	} from 'lucide-svelte';
 	import { page } from '$app/state';
 
@@ -27,6 +30,16 @@
 	let showModalKasbon = $state(false);
 	let showModalTermin = $state(false);
 	let showModalVendor = $state(false);
+
+	// Editing States
+	let editingTermin = $state<any>(null);
+	let showModalEditTermin = $state(false);
+
+	let editingVendor = $state<any>(null);
+	let showModalEditVendor = $state(false);
+
+	let editingKasbon = $state<any>(null);
+	let showModalEditKasbon = $state(false);
 
 	// Kasbon Form Reactive Values
 	let selectedVendorId = $state<number>(data.vendors[0]?.id || 0);
@@ -238,7 +251,7 @@
 		<div class="space-y-4">
 			{#each data.vendors as v (v.id)}
 				<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
-					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
 						<div>
 							<div class="text-sm font-bold text-slate-900 flex items-center gap-2">
 								<span>{v.namaVendor}</span>
@@ -252,24 +265,64 @@
 							</div>
 						</div>
 
-						<div class="flex items-center gap-4 text-xs font-mono">
-							<div>
-								<span class="text-slate-400">RAP:</span> 
-								<span class="font-bold text-slate-900">{formatRupiah(v.rapNilai)}</span>
+						<div class="flex flex-wrap items-center gap-3">
+							<div class="flex items-center gap-4 text-xs font-mono">
+								<div>
+									<span class="text-slate-400">RAP:</span> 
+									<span class="font-bold text-slate-900">{formatRupiah(v.rapNilai)}</span>
+								</div>
+								<div>
+									<span class="text-slate-400">Terbayar:</span> 
+									<span class="font-bold text-rose-600">{formatRupiah(v.totalTerbayar)}</span>
+								</div>
+								<div>
+									<span class="text-slate-400">Sisa:</span> 
+									<span class="font-bold text-slate-700">{formatRupiah(v.sisaHutang)}</span>
+								</div>
 							</div>
-							<div>
-								<span class="text-slate-400">Terbayar:</span> 
-								<span class="font-bold text-rose-600">{formatRupiah(v.totalTerbayar)}</span>
-							</div>
-							<div>
-								<span class="text-slate-400">Sisa Hutang:</span> 
-								<span class="font-bold text-slate-700">{formatRupiah(v.sisaHutang)}</span>
+
+							<div class="flex items-center gap-1 border-l border-slate-200 pl-2">
+								<button
+									type="button"
+									onclick={() => {
+										editingVendor = { ...v };
+										showModalEditVendor = true;
+									}}
+									class="p-1 text-slate-400 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
+									title="Edit Subkon"
+								>
+									<Edit3 class="w-3.5 h-3.5" />
+								</button>
+
+								{#if v.payments.length === 0}
+									<form
+										method="POST"
+										action="?/deleteVendor"
+										use:enhance={() => {
+											if (!confirm(`Hapus subkon ${v.namaVendor}?`)) return () => {};
+											return async ({ update, result }) => {
+												await update();
+												if (result.type === 'success') toast.success('Subkon berhasil dihapus.');
+												else if (result.type === 'failure') toast.error(String((result.data as any)?.error || 'Gagal menghapus subkon.'));
+											};
+										}}
+									>
+										<input type="hidden" name="id" value={v.id} />
+										<button
+											type="submit"
+											class="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+											title="Hapus Subkon"
+										>
+											<Trash2 class="w-3.5 h-3.5" />
+										</button>
+									</form>
+								{/if}
 							</div>
 						</div>
 					</div>
 
-					<!-- Riwayat Pembayaran Subkon Table -->
-					<div class="overflow-x-auto">
+					<!-- Desktop Table: Riwayat Pembayaran Subkon -->
+					<div class="hidden md:block overflow-x-auto">
 						<table class="w-full text-left text-xs border-collapse">
 							<thead class="bg-slate-50 text-slate-600 border-b border-slate-100">
 								<tr>
@@ -278,6 +331,7 @@
 									<th class="py-2 px-3">PENERIMA</th>
 									<th class="py-2 px-3 text-right">NOMINAL</th>
 									<th class="py-2 px-3 text-center">STATUS</th>
+									<th class="py-2 px-3 text-right">AKSI</th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-slate-100">
@@ -292,16 +346,100 @@
 												Tercairkan
 											</span>
 										</td>
+										<td class="py-2 px-3 text-right">
+											<div class="inline-flex items-center gap-1">
+												<button
+													type="button"
+													onclick={() => {
+														editingKasbon = { ...pm };
+														showModalEditKasbon = true;
+													}}
+													class="p-1 text-slate-400 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
+													title="Edit Kasbon"
+												>
+													<Edit3 class="w-3 h-3" />
+												</button>
+												<form
+													method="POST"
+													action="?/deleteKasbon"
+													use:enhance={() => {
+														if (!confirm(`Hapus kasbon sebesar ${formatRupiah(pm.nominal)}?`)) return () => {};
+														return async ({ update, result }) => {
+															await update();
+															if (result.type === 'success') toast.success('Kasbon berhasil dihapus.');
+															else if (result.type === 'failure') toast.error(String((result.data as any)?.error || 'Gagal menghapus kasbon.'));
+														};
+													}}
+												>
+													<input type="hidden" name="id" value={pm.id} />
+													<button
+														type="submit"
+														class="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+														title="Hapus Kasbon"
+													>
+														<Trash2 class="w-3 h-3" />
+													</button>
+												</form>
+											</div>
+										</td>
 									</tr>
 								{:else}
 									<tr>
-										<td colspan="5" class="py-4 text-center text-slate-400">
+										<td colspan="6" class="py-4 text-center text-slate-400">
 											Belum ada riwayat kasbon/pembayaran untuk vendor ini.
 										</td>
 									</tr>
 								{/each}
 							</tbody>
 						</table>
+					</div>
+
+					<!-- Mobile Cards View for Payments -->
+					<div class="md:hidden space-y-2">
+						{#each v.payments as pm (pm.id)}
+							<div class="p-3 bg-slate-50/70 rounded-xl border border-slate-100 text-xs space-y-2">
+								<div class="flex items-center justify-between">
+									<span class="font-bold text-slate-900">{pm.penerimaNama}</span>
+									<span class="font-mono font-bold text-rose-600">{formatRupiah(pm.nominal)}</span>
+								</div>
+								<div class="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+									<span>{formatTanggal(pm.tglBayar)} &bull; {pm.tipe}</span>
+									<div class="flex items-center gap-1.5">
+										<button
+											type="button"
+											onclick={() => {
+												editingKasbon = { ...pm };
+												showModalEditKasbon = true;
+											}}
+											class="p-1 text-slate-600 hover:text-slate-900"
+											title="Edit Kasbon"
+										>
+											<Edit3 class="w-3.5 h-3.5" />
+										</button>
+										<form
+											method="POST"
+											action="?/deleteKasbon"
+											use:enhance={() => {
+												if (!confirm(`Hapus kasbon sebesar ${formatRupiah(pm.nominal)}?`)) return () => {};
+												return async ({ update, result }) => {
+													await update();
+													if (result.type === 'success') toast.success('Kasbon berhasil dihapus.');
+												};
+											}}
+										>
+											<input type="hidden" name="id" value={pm.id} />
+											<button type="submit" class="p-1 text-rose-600 cursor-pointer" title="Hapus Kasbon">
+												<Trash2 class="w-3.5 h-3.5" />
+											</button>
+										</form>
+									</div>
+								</div>
+							</div>
+						{:else}
+							<div class="py-4 text-center text-slate-400 text-xs">
+								Belum ada riwayat kasbon untuk vendor ini.
+							</div>
+						{/each}
 					</div>
 				</div>
 			{:else}
@@ -315,7 +453,8 @@
 	<!-- Tab 2: Termin Klien Content -->
 	{#if activeTab === 'TERMIN'}
 		<div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-			<div class="overflow-x-auto">
+			<!-- Desktop Table for Termin -->
+			<div class="hidden md:block overflow-x-auto">
 				<table class="w-full text-left text-xs border-collapse">
 					<thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
 						<tr>
@@ -324,6 +463,7 @@
 							<th class="py-3 px-3 text-right">NOMINAL CAIR</th>
 							<th class="py-3 px-3 text-center">TANGGAL CAIR</th>
 							<th class="py-3 px-3 text-center">STATUS</th>
+							<th class="py-3 px-3 text-right">AKSI</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100">
@@ -338,10 +478,46 @@
 										{t.isLunas ? 'Lunas' : 'Menunggu'}
 									</span>
 								</td>
+								<td class="py-2.5 px-3 text-right">
+									<div class="inline-flex items-center gap-1">
+										<button
+											type="button"
+											onclick={() => {
+												editingTermin = { ...t };
+												showModalEditTermin = true;
+											}}
+											class="p-1 text-slate-400 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
+											title="Edit Termin"
+										>
+											<Edit3 class="w-3.5 h-3.5" />
+										</button>
+										<form
+											method="POST"
+											action="?/deleteTermin"
+											use:enhance={() => {
+												if (!confirm(`Hapus catatan ${t.terminKe}?`)) return () => {};
+												return async ({ update, result }) => {
+													await update();
+													if (result.type === 'success') toast.success('Termin berhasil dihapus.');
+													else if (result.type === 'failure') toast.error(String((result.data as any)?.error || 'Gagal menghapus termin.'));
+												};
+											}}
+										>
+											<input type="hidden" name="id" value={t.id} />
+											<button
+												type="submit"
+												class="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+												title="Hapus Termin"
+											>
+												<Trash2 class="w-3.5 h-3.5" />
+											</button>
+										</form>
+									</div>
+								</td>
 							</tr>
 						{:else}
 							<tr>
-								<td colspan="5" class="py-8 text-center text-slate-400">
+								<td colspan="6" class="py-8 text-center text-slate-400">
 									Belum ada catatan pencairan termin.
 								</td>
 							</tr>
@@ -349,13 +525,73 @@
 					</tbody>
 				</table>
 			</div>
+
+			<!-- Mobile Cards View for Termin -->
+			<div class="md:hidden divide-y divide-slate-100">
+				{#each data.termins as t (t.id)}
+					<div class="p-4 space-y-2.5">
+						<div class="flex items-center justify-between">
+							<span class="font-bold text-slate-900 text-xs">{t.terminKe}</span>
+							<span class="px-2 py-0.5 rounded text-[10px] font-bold {t.isLunas ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+								{t.isLunas ? 'Lunas' : 'Menunggu'}
+							</span>
+						</div>
+						<div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+							<div>
+								<span class="text-[10px] text-slate-400 block">Rencana</span>
+								<span class="font-mono font-bold text-slate-700">{formatRupiah(t.nominalRencana)}</span>
+							</div>
+							<div>
+								<span class="text-[10px] text-slate-400 block">Cair</span>
+								<span class="font-mono font-bold text-emerald-600">{formatRupiah(t.nominalCair)}</span>
+							</div>
+						</div>
+						<div class="flex items-center justify-between text-[11px] pt-1">
+							<span class="text-slate-500">Tgl Cair: {formatTanggal(t.tglCair)}</span>
+							<div class="flex items-center gap-2">
+								<button
+									type="button"
+									onclick={() => {
+										editingTermin = { ...t };
+										showModalEditTermin = true;
+									}}
+									class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200"
+								>
+									Edit
+								</button>
+								<form
+									method="POST"
+									action="?/deleteTermin"
+									use:enhance={() => {
+										if (!confirm(`Hapus ${t.terminKe}?`)) return () => {};
+										return async ({ update, result }) => {
+											await update();
+											if (result.type === 'success') toast.success('Termin berhasil dihapus.');
+										};
+									}}
+								>
+									<input type="hidden" name="id" value={t.id} />
+									<button type="submit" class="p-1 text-rose-600 cursor-pointer" title="Hapus Termin">
+										<Trash2 class="w-3.5 h-3.5" />
+									</button>
+								</form>
+							</div>
+						</div>
+					</div>
+				{:else}
+					<div class="py-8 text-center text-slate-400 text-xs">
+						Belum ada catatan pencairan termin.
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 
 	<!-- Tab 3: Kas Kecil CIH Content -->
 	{#if activeTab === 'OPERASIONAL'}
 		<div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-			<div class="overflow-x-auto">
+			<!-- Desktop Table for CIH -->
+			<div class="hidden md:block overflow-x-auto">
 				<table class="w-full text-left text-xs border-collapse">
 					<thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
 						<tr>
@@ -388,6 +624,27 @@
 						{/each}
 					</tbody>
 				</table>
+			</div>
+
+			<!-- Mobile Cards View for CIH -->
+			<div class="md:hidden divide-y divide-slate-100">
+				{#each data.cihTransactions as c (c.id)}
+					<div class="p-3.5 space-y-1.5 text-xs">
+						<div class="flex items-center justify-between">
+							<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">{c.kategori}</span>
+							<span class="font-mono font-bold text-rose-600">{formatRupiah(c.nominal)}</span>
+						</div>
+						<div class="text-slate-800 font-medium">{c.keterangan}</div>
+						<div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+							<span>{formatTanggal(c.tgl)}</span>
+							<span>PIC: {c.penerimaPic || '-'}</span>
+						</div>
+					</div>
+				{:else}
+					<div class="py-8 text-center text-slate-400 text-xs">
+						Belum ada mutasi operasional kas kecil untuk titik proyek ini.
+					</div>
+				{/each}
 			</div>
 		</div>
 	{/if}
@@ -599,3 +856,192 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Modal Edit Termin -->
+{#if showModalEditTermin && editingTermin}
+	<div 
+		class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+			<div class="flex items-center justify-between pb-3 border-b border-slate-100">
+				<h3 class="text-sm font-bold text-slate-900">Ubah Data Termin SPK</h3>
+				<button type="button" onclick={() => showModalEditTermin = false} class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<form
+				method="POST"
+				action="?/editTermin"
+				use:enhance={() => {
+					return async ({ update, result }) => {
+						await update();
+						if (result.type === 'success') {
+							showModalEditTermin = false;
+							toast.success('Data termin berhasil diperbarui!');
+						} else if (result.type === 'failure') {
+							toast.error(String((result.data as any)?.error || 'Gagal mengubah termin.'));
+						}
+					};
+				}}
+				class="space-y-3.5 text-xs"
+			>
+				<input type="hidden" name="id" value={editingTermin.id} />
+
+				<div>
+					<label class="block font-semibold text-slate-700 mb-1">Tahap Termin</label>
+					<input type="text" name="terminKe" bind:value={editingTermin.terminKe} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+				</div>
+
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="block font-semibold text-slate-700 mb-1">Nominal Rencana (Rp)</label>
+						<input type="number" name="nominalRencana" bind:value={editingTermin.nominalRencana} class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono" />
+					</div>
+					<div>
+						<label class="block font-semibold text-slate-700 mb-1">Nominal Cair (Rp)</label>
+						<input type="number" name="nominalCair" bind:value={editingTermin.nominalCair} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono font-bold text-emerald-700" />
+					</div>
+				</div>
+
+				<div>
+					<label class="block font-semibold text-slate-700 mb-1">Tanggal Cair</label>
+					<input type="date" name="tglCair" bind:value={editingTermin.tglCair} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+				</div>
+
+				<label class="flex items-center gap-2 pt-1 cursor-pointer">
+					<input type="checkbox" name="isLunas" checked={editingTermin.isLunas} class="rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+					<span class="font-semibold text-slate-700">Tandai status termin telah lunas cair</span>
+				</label>
+
+				<div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+					<button type="button" onclick={() => showModalEditTermin = false} class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Batal</button>
+					<button type="submit" class="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors cursor-pointer">Simpan Perubahan</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- Modal Edit Vendor -->
+{#if showModalEditVendor && editingVendor}
+	<div 
+		class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+			<div class="flex items-center justify-between pb-3 border-b border-slate-100">
+				<h3 class="text-sm font-bold text-slate-900">Ubah Data Subkon / Mandor</h3>
+				<button type="button" onclick={() => showModalEditVendor = false} class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<form
+				method="POST"
+				action="?/editVendor"
+				use:enhance={() => {
+					return async ({ update, result }) => {
+						await update();
+						if (result.type === 'success') {
+							showModalEditVendor = false;
+							toast.success('Data subkon berhasil diperbarui!');
+						} else if (result.type === 'failure') {
+							toast.error(String((result.data as any)?.error || 'Gagal mengubah subkon.'));
+						}
+					};
+				}}
+				class="space-y-3.5 text-xs"
+			>
+				<input type="hidden" name="id" value={editingVendor.id} />
+
+				<div>
+					<label class="block font-semibold text-slate-700 mb-1">Nama Subkon / Mandor</label>
+					<input type="text" name="namaVendor" bind:value={editingVendor.namaVendor} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+				</div>
+
+				<div>
+					<label class="block font-semibold text-slate-700 mb-1">Bidang Pekerjaan</label>
+					<input type="text" name="pekerjaan" bind:value={editingVendor.pekerjaan} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+				</div>
+
+				<div>
+					<label class="block font-semibold text-slate-700 mb-1">Nilai RAP Subkon (Rp)</label>
+					<input type="number" name="rapNilai" bind:value={editingVendor.rapNilai} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono font-bold" />
+				</div>
+
+				<div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+					<button type="button" onclick={() => showModalEditVendor = false} class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Batal</button>
+					<button type="submit" class="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors cursor-pointer">Simpan Perubahan</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- Modal Edit Kasbon -->
+{#if showModalEditKasbon && editingKasbon}
+	<div 
+		class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+			<div class="flex items-center justify-between pb-3 border-b border-slate-100">
+				<h3 class="text-sm font-bold text-slate-900">Ubah Data Kasbon Subkon</h3>
+				<button type="button" onclick={() => showModalEditKasbon = false} class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<form
+				method="POST"
+				action="?/editKasbon"
+				use:enhance={() => {
+					return async ({ update, result }) => {
+						await update();
+						if (result.type === 'success') {
+							showModalEditKasbon = false;
+							toast.success('Data kasbon berhasil diperbarui!');
+						} else if (result.type === 'failure') {
+							toast.error(String((result.data as any)?.error || 'Gagal mengubah kasbon.'));
+						}
+					};
+				}}
+				class="space-y-3.5 text-xs"
+			>
+				<input type="hidden" name="id" value={editingKasbon.id} />
+
+				<div>
+					<label class="block font-semibold text-slate-700 mb-1">Nama PIC Penerima Uang</label>
+					<input type="text" name="penerimaNama" bind:value={editingKasbon.penerimaNama} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+				</div>
+
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="block font-semibold text-slate-700 mb-1">Nominal Kasbon (Rp)</label>
+						<input type="number" name="nominal" bind:value={editingKasbon.nominal} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono font-bold text-rose-600" />
+					</div>
+					<div>
+						<label class="block font-semibold text-slate-700 mb-1">Tanggal Bayar</label>
+						<input type="date" name="tglBayar" bind:value={editingKasbon.tglBayar} required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+					</div>
+				</div>
+
+				<div>
+					<label class="block font-semibold text-slate-700 mb-1">Keterangan / Keperluan</label>
+					<input type="text" name="keterangan" bind:value={editingKasbon.keterangan} placeholder="Contoh: Pembelian semen & upah tukang" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-slate-900" />
+				</div>
+
+				<div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+					<button type="button" onclick={() => showModalEditKasbon = false} class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Batal</button>
+					<button type="submit" class="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors cursor-pointer">Simpan Perubahan</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+

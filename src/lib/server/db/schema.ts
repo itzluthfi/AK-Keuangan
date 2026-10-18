@@ -8,7 +8,8 @@ export const users = sqliteTable('users', {
 	namaLengkap: text('nama_lengkap').notNull(),
 	passwordHash: text('password_hash').notNull(),
 	pinPasscodeHash: text('pin_hash'), // PIN 6 digit untuk akses cepat mobile
-	role: text('role', { enum: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER'] }).default('SITE_MANAGER').notNull(),
+	role: text('role').default('SITE_MANAGER').notNull(),
+	roleId: integer('role_id'), // Link ke tabel roles
 	noHp: text('no_hp'),
 	isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
 	createdAt: text('created_at').default('CURRENT_TIMESTAMP').notNull()
@@ -19,6 +20,7 @@ export const projects = sqliteTable('projects', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	kode: text('kode').notNull().unique(), // Contoh: SPPG-BALAI-PU, FORD
 	nama: text('nama').notNull(),
+	kategori: text('kategori').default('Pelaksanaan Konstruksi'), // Pelaksanaan Konstruksi, Jasa Desain Arsitektur, Renovasi
 	lokasi: text('lokasi'),
 	rabKontrak: real('rab_kontrak').default(0).notNull(), // Nilai SPK/RAB
 	progresFisikPct: real('progres_fisik_pct').default(0).notNull(), // 0 - 100%
@@ -26,6 +28,7 @@ export const projects = sqliteTable('projects', {
 	picPengawas: text('pic_pengawas'),
 	targetSelesai: text('target_selesai'),
 	catatan: text('catatan'),
+	isArchived: integer('is_archived', { mode: 'boolean' }).default(false).notNull(),
 	createdAt: text('created_at').default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: text('updated_at').default('CURRENT_TIMESTAMP').notNull()
 });
@@ -111,5 +114,40 @@ export const masterAccounts = sqliteTable('master_accounts', {
 	saldoAwal: real('saldo_awal').default(0).notNull(),
 	catatan: text('catatan'),
 	isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
+	createdAt: text('created_at').default('CURRENT_TIMESTAMP').notNull()
+});
+
+// 9. Master Roles & Permissions (Dynamic RBAC)
+export const roles = sqliteTable('roles', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	kode: text('kode').notNull().unique(), // DIREKTUR, FINANCE, SITE_MANAGER, AUDITOR, LOGISTIK
+	nama: text('nama').notNull(),
+	deskripsi: text('deskripsi'),
+	permissions: text('permissions').default('[]').notNull(), // JSON Array of permission keys: ['dashboard.view', 'proyek.create', ...]
+	isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
+	createdAt: text('created_at').default('CURRENT_TIMESTAMP').notNull()
+});
+
+// 10. Dokumen Faktur Penagihan Resmi (Invoices)
+export const invoices = sqliteTable('invoices', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	invoiceNo: text('invoice_no').notNull().unique(), // e.g. INV-202610-001
+	projectId: integer('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+	terminKe: text('termin_ke'),
+	tglInvoice: text('tgl_invoice').notNull(),
+	jatuhTempo: text('jatuh_tempo').notNull(),
+	subtotal: real('subtotal').default(0).notNull(),
+	ppnNominal: real('ppn_nominal').default(0).notNull(),
+	pphNominal: real('pph_nominal').default(0).notNull(),
+	grandTotal: real('grand_total').default(0).notNull(),
+	status: text('status', { enum: ['DRAFT', 'TERKIRIM', 'LUNAS', 'BATAL'] }).default('TERKIRIM').notNull(),
+	itemsJson: text('items_json').notNull(), // JSON line items [{id, desc, qty, unit, price}]
+	bankNama: text('bank_nama'),
+	bankRekening: text('bank_rekening'),
+	bankAtasNama: text('bank_atas_nama'),
+	recipientName: text('recipient_name'),
+	recipientAddress: text('recipient_address'),
+	catatan: text('catatan'),
+	createdBy: text('created_by'),
 	createdAt: text('created_at').default('CURRENT_TIMESTAMP').notNull()
 });

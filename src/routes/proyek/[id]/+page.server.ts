@@ -180,5 +180,103 @@ export const actions: Actions = {
 		});
 
 		return { success: true, message: 'Kasbon/pembayaran subkon berhasil dicatat.' };
+	},
+
+	editTermin: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		const terminKe = String(form.get('terminKe') || '').trim();
+		const nominalCair = parseFloat(String(form.get('nominalCair') || '0').replace(/[^0-9.]/g, ''));
+		const tglCair = String(form.get('tglCair') || '').trim();
+
+		if (!id || !terminKe || nominalCair <= 0) {
+			return fail(400, { message: 'Data termin tidak valid.' });
+		}
+
+		await db.update(projectTermins).set({
+			terminKe,
+			nominalCair,
+			nominalRencana: nominalCair,
+			tglCair
+		}).where(eq(projectTermins.id, id));
+
+		return { success: true, message: 'Data termin berhasil diperbarui.' };
+	},
+
+	deleteTermin: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		if (!id) return fail(400, { message: 'ID termin tidak valid.' });
+
+		await db.delete(projectTermins).where(eq(projectTermins.id, id));
+		return { success: true, message: 'Pencairan termin berhasil dihapus.' };
+	},
+
+	editVendor: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		const namaVendor = String(form.get('namaVendor') || '').trim();
+		const pekerjaan = String(form.get('pekerjaan') || '').trim();
+		const rapNilai = parseFloat(String(form.get('rapNilai') || '0').replace(/[^0-9.]/g, ''));
+		const feeAlokasi = parseFloat(String(form.get('feeAlokasi') || '0').replace(/[^0-9.]/g, ''));
+
+		if (!id || !namaVendor || rapNilai <= 0) {
+			return fail(400, { message: 'Nama subkon dan nilai RAP wajib diisi.' });
+		}
+
+		await db.update(projectVendors).set({
+			namaVendor,
+			pekerjaan,
+			rapNilai,
+			feeAlokasi
+		}).where(eq(projectVendors.id, id));
+
+		return { success: true, message: 'Data subkon berhasil diperbarui.' };
+	},
+
+	deleteVendor: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		if (!id) return fail(400, { message: 'ID subkon tidak valid.' });
+
+		const hasPayments = (await db.select().from(vendorPayments).where(eq(vendorPayments.projectVendorId, id)).all()).length > 0;
+		if (hasPayments) {
+			return fail(400, { message: 'Subkon tidak dapat dihapus karena sudah memiliki riwayat pembayaran kasbon aktif.' });
+		}
+
+		await db.delete(projectVendors).where(eq(projectVendors.id, id));
+		return { success: true, message: 'Subkon pelaksana berhasil dihapus dari proyek.' };
+	},
+
+	editKasbon: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		const nominal = parseFloat(String(form.get('nominal') || '0').replace(/[^0-9.]/g, ''));
+		const penerimaNama = String(form.get('penerimaNama') || '').trim();
+		const tglBayar = String(form.get('tglBayar') || '').trim();
+		const tipe = String(form.get('tipe') || 'KASBON_PROGRES');
+
+		if (!id || nominal <= 0 || !penerimaNama) {
+			return fail(400, { message: 'Data kasbon tidak lengkap.' });
+		}
+
+		await db.update(vendorPayments).set({
+			nominal,
+			penerimaNama,
+			tglBayar,
+			tipe
+		}).where(eq(vendorPayments.id, id));
+
+		return { success: true, message: 'Data pembayaran kasbon berhasil diperbarui.' };
+	},
+
+	deleteKasbon: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		if (!id) return fail(400, { message: 'ID kasbon tidak valid.' });
+
+		await db.delete(vendorPayments).where(eq(vendorPayments.id, id));
+		return { success: true, message: 'Riwayat pembayaran kasbon berhasil dihapus.' };
 	}
 };
+

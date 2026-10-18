@@ -14,7 +14,12 @@
 		Layers,
 		Settings,
 		ChevronDown,
-		FileText
+		FileText,
+		Landmark,
+		KeyRound,
+		Sliders,
+		Users,
+		Database
 	} from 'lucide-svelte';
 
 	function handleNavigate() {
@@ -22,6 +27,21 @@
 	}
 
 	let userRole = $derived(page.data.user?.role || 'SITE_MANAGER');
+
+	function isItemActive(itemUrl: string) {
+		if (itemUrl === '/') return page.url.pathname === '/' && page.url.search === '';
+		if (itemUrl.includes('?')) {
+			const [itemPath, itemQuery] = itemUrl.split('?');
+			const itemParams = new URLSearchParams(itemQuery);
+			const currentTab = page.url.searchParams.get('tab');
+			return page.url.pathname === itemPath && currentTab === itemParams.get('tab');
+		}
+		if (itemUrl === '/pengaturan') {
+			const tab = page.url.searchParams.get('tab');
+			return page.url.pathname === '/pengaturan' && (!tab || tab === 'profil');
+		}
+		return page.url.pathname.startsWith(itemUrl) && !page.url.searchParams.has('tab');
+	}
 
 	const allNavGroups = [
 		{
@@ -31,30 +51,13 @@
 					title: 'Kas Besar (Dashboard)',
 					url: '/',
 					icon: LayoutDashboard,
-					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER']
+					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER', 'AUDITOR']
 				},
 				{
 					title: 'Cash Pooling',
 					url: '/cash-pooling',
 					icon: ArrowRightLeft,
-					roles: ['DIREKTUR', 'FINANCE']
-				}
-			]
-		},
-		{
-			label: 'Manajemen Proyek SPPG',
-			items: [
-				{
-					title: 'Titik Dapur SPPG',
-					url: '/proyek',
-					icon: Layers,
-					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER']
-				},
-				{
-					title: 'Subkon & Mandor',
-					url: '/subkon',
-					icon: HardHat,
-					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER']
+					roles: ['DIREKTUR', 'FINANCE', 'AUDITOR']
 				}
 			]
 		},
@@ -65,34 +68,70 @@
 					title: 'Kasir CIH (Kas Lapangan)',
 					url: '/kas-lapangan',
 					icon: Receipt,
-					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER']
-				}
-			]
-		},
-		{
-			label: 'Pelaporan & Eksekutif',
-			items: [
-				{
-					title: 'Laporan Rekapitulasi',
-					url: '/cetak/laporan',
-					icon: FileSpreadsheet,
-					roles: ['DIREKTUR', 'FINANCE']
+					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER', 'AUDITOR']
 				},
 				{
 					title: 'Generator Invoice',
 					url: '/invoice',
 					icon: FileText,
-					roles: ['DIREKTUR', 'FINANCE']
+					roles: ['DIREKTUR', 'FINANCE', 'AUDITOR']
+				},
+				{
+					title: 'Laporan Rekapitulasi',
+					url: '/cetak/laporan',
+					icon: FileSpreadsheet,
+					roles: ['DIREKTUR', 'FINANCE', 'AUDITOR']
 				}
 			]
 		},
 		{
-			label: 'Sistem & Master Data',
+			label: 'Master Data',
 			items: [
 				{
-					title: 'Pengaturan & Master Data',
-					url: '/pengaturan',
-					icon: Settings,
+					title: 'Master Titik Proyek',
+					url: '/proyek',
+					icon: Layers,
+					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER', 'AUDITOR']
+				},
+				{
+					title: 'Master Subkon & Mandor',
+					url: '/subkon',
+					icon: HardHat,
+					roles: ['DIREKTUR', 'FINANCE', 'SITE_MANAGER', 'AUDITOR']
+				},
+				{
+					title: 'Master Rekening Kas/Bank',
+					url: '/pengaturan?tab=master_account',
+					icon: Landmark,
+					roles: ['DIREKTUR', 'FINANCE']
+				},
+				{
+					title: 'Master Peran & Izin (RBAC)',
+					url: '/pengaturan?tab=roles',
+					icon: KeyRound,
+					roles: ['DIREKTUR']
+				}
+			]
+		},
+		{
+			label: 'Pengaturan Sistem',
+			items: [
+				{
+					title: 'Profil Entitas & Risiko',
+					url: '/pengaturan?tab=profil',
+					icon: Sliders,
+					roles: ['DIREKTUR']
+				},
+				{
+					title: 'Kelola Pengguna',
+					url: '/pengaturan?tab=users',
+					icon: Users,
+					roles: ['DIREKTUR']
+				},
+				{
+					title: 'Status Database WAL',
+					url: '/pengaturan?tab=database',
+					icon: Database,
 					roles: ['DIREKTUR']
 				}
 			]
@@ -132,7 +171,7 @@
 				</div>
 				<div class="space-y-0.5">
 					{#each group.items as item (item.url)}
-						{@const isActive = item.url === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(item.url)}
+						{@const isActive = isItemActive(item.url)}
 						<a
 							href={item.url}
 							class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors {isActive ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}"
@@ -237,7 +276,7 @@
 						</div>
 						<div class="space-y-1">
 							{#each group.items as item (item.url)}
-								{@const isActive = item.url === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(item.url)}
+								{@const isActive = isItemActive(item.url)}
 								<a
 									href={item.url}
 									onclick={handleNavigate}
