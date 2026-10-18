@@ -163,9 +163,10 @@
 		</div>
 	{/if}
 
-	<!-- Subkon Data Table (Sorting & Selectable) -->
+	<!-- Subkon Data Container (Desktop Table & Mobile Cards) -->
 	<div class="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs">
-		<div class="overflow-x-auto">
+		<!-- Desktop Table View (>= md screens) -->
+		<div class="hidden md:block overflow-x-auto">
 			<table class="w-full text-left text-xs border-collapse">
 				<thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
 					<tr>
@@ -261,7 +262,7 @@
 							<!-- Checkbox Row -->
 							<td class="py-3 px-3 text-center">
 								<input 
-									type="checkbox"
+									type="checkbox" 
 									checked={isSelected}
 									onchange={() => toggleSelect(v.id)}
 									class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 accent-slate-900 cursor-pointer"
@@ -333,6 +334,102 @@
 				</tbody>
 			</table>
 		</div>
+
+		<!-- Mobile Cards View (< md screens) -->
+		<div class="md:hidden divide-y divide-slate-100">
+			{#if filteredVendors.length === 0}
+				<div class="py-10 text-center text-slate-400 text-xs">
+					Tidak ada data subkon atau mandor yang sesuai pencarian.
+				</div>
+			{/if}
+			{#each filteredVendors as v, idx (v.id)}
+				{@const isSelected = selectedVendorIds.has(v.id)}
+				<div class="p-4 space-y-3 {isSelected ? 'bg-slate-50/90' : ''}">
+					<!-- Top Bar: Checkbox + Name & Specialty + Actions -->
+					<div class="flex items-start justify-between gap-2">
+						<div class="flex items-start gap-2.5">
+							<input 
+								type="checkbox" 
+								checked={isSelected}
+								onchange={() => toggleSelect(v.id)}
+								class="w-4 h-4 mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 accent-slate-900 cursor-pointer"
+							/>
+							<div>
+								<div class="font-bold text-slate-900 text-sm leading-tight">{v.namaVendor}</div>
+								<span class="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold mt-1">
+									{v.bidang}
+								</span>
+							</div>
+						</div>
+
+						<div class="flex items-center gap-1">
+							{#if v.projectHashId}
+								<a
+									href="/proyek/{v.projectHashId}"
+									class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
+									title="Lihat Ledger Proyek"
+								>
+									<Eye class="w-4 h-4" />
+								</a>
+							{/if}
+							<button
+								type="button"
+								onclick={() => vendorToDelete = v}
+								class="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+								title="Hapus Subkon"
+							>
+								<Trash2 class="w-4 h-4" />
+							</button>
+						</div>
+					</div>
+
+					<!-- Project & Physical Progress -->
+					<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+						<div>
+							<span class="text-slate-400 block text-[10px]">Titik Proyek</span>
+							<span class="font-bold text-slate-800">{v.namaProyek}</span>
+						</div>
+						<div class="text-right">
+							<span class="text-slate-400 block text-[10px]">Fisik Lapangan</span>
+							<span class="font-extrabold text-slate-900">{v.progresFisikProyek}%</span>
+						</div>
+					</div>
+
+					<!-- Financial Metrics Grid -->
+					<div class="grid grid-cols-3 gap-2 text-xs">
+						<div class="p-2 rounded-lg bg-slate-50/70 border border-slate-100">
+							<span class="text-slate-400 text-[10px] block">Kontrak RAP</span>
+							<span class="font-bold text-slate-800 tabular-nums text-[11px]">{formatRupiah(v.rapNilai)}</span>
+						</div>
+						<div class="p-2 rounded-lg bg-slate-50/70 border border-slate-100">
+							<span class="text-slate-400 text-[10px] block">Realisasi Kasbon</span>
+							<span class="font-extrabold text-slate-900 tabular-nums text-[11px]">{formatRupiah(v.totalTerbayar)}</span>
+							<span class="text-[9px] text-slate-400 block">{Math.round(v.pctTerbayar)}% RAP</span>
+						</div>
+						<div class="p-2 rounded-lg bg-slate-50/70 border border-slate-100">
+							<span class="text-slate-400 text-[10px] block">Sisa Hutang</span>
+							<span class="font-bold text-rose-600 tabular-nums text-[11px]">{formatRupiah(v.sisaHutang)}</span>
+						</div>
+					</div>
+
+					<!-- Status Kasbon Badge -->
+					<div class="pt-1 flex items-center justify-between">
+						<span class="text-[11px] text-slate-400">Status Kasbon:</span>
+						{#if v.isOverprogress}
+							<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+								<AlertTriangle class="w-3 h-3 text-amber-600" />
+								<span>Kasbon &gt; Fisik</span>
+							</span>
+						{:else}
+							<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+								<CheckCircle2 class="w-3 h-3 text-slate-600" />
+								<span>Sesuai Progres</span>
+							</span>
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
 	</div>
 
 </div>
@@ -344,11 +441,15 @@
 		onclick={() => vendorToDelete = null}
 		role="dialog"
 		aria-modal="true"
+		tabindex="-1"
+		onkeydown={(e) => { if (e.key === 'Escape') vendorToDelete = null; }}
 	>
 		<div 
 			class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150"
 			onclick={(e) => e.stopPropagation()}
 			role="document"
+			tabindex="0"
+			onkeydown={(e) => e.stopPropagation()}
 		>
 			<div class="flex items-center gap-3">
 				<div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">

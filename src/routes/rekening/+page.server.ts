@@ -26,6 +26,7 @@ export const actions: Actions = {
 		const bankNama = String(form.get('bankNama') || '').trim();
 		const noRekening = String(form.get('noRekening') || '').trim();
 		const atasNama = String(form.get('atasNama') || '').trim();
+		const saldoAwal = Number(form.get('saldoAwal') || 0);
 
 		if (!kode || !nama) {
 			return fail(400, { success: false, error: 'Kode dan Nama Rekening wajib diisi.' });
@@ -39,12 +40,44 @@ export const actions: Actions = {
 				bankNama,
 				noRekening,
 				atasNama,
-				saldoAwal: 0
+				saldoAwal
 			});
 
 			return { success: true, message: `Rekening ${nama} berhasil ditambahkan.` };
 		} catch (e: any) {
 			return fail(400, { success: false, error: 'Gagal menambah rekening: Kode akun mungkin sudah terdaftar.' });
+		}
+	},
+
+	editMasterAccount: async ({ request }) => {
+		const form = await request.formData();
+		const id = parseInt(String(form.get('id') || '0'));
+		const kode = String(form.get('kode') || '').trim().toUpperCase();
+		const tipe = String(form.get('tipe') || 'BANK') as 'BANK' | 'POOLING' | 'KAS_KECIL';
+		const nama = String(form.get('nama') || '').trim();
+		const bankNama = String(form.get('bankNama') || '').trim();
+		const noRekening = String(form.get('noRekening') || '').trim();
+		const atasNama = String(form.get('atasNama') || '').trim();
+		const saldoAwal = Number(form.get('saldoAwal') || 0);
+
+		if (!id || !kode || !nama) {
+			return fail(400, { success: false, error: 'Kode dan Nama Rekening wajib diisi.' });
+		}
+
+		try {
+			await db.update(masterAccounts).set({
+				kode,
+				tipe,
+				nama,
+				bankNama,
+				noRekening,
+				atasNama,
+				saldoAwal
+			}).where(eq(masterAccounts.id, id));
+
+			return { success: true, message: `Rekening ${nama} berhasil diperbarui.` };
+		} catch (e: any) {
+			return fail(400, { success: false, error: 'Gagal memperbarui rekening.' });
 		}
 	},
 

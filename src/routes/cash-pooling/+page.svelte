@@ -392,7 +392,8 @@
 
 	<!-- TABEL MUTASI CASH POOLING (LENGKAP DENGAN AKSI, SORTING & SELECT) -->
 	<div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-		<div class="overflow-x-auto">
+		<!-- Desktop Table View -->
+		<div class="hidden md:block overflow-x-auto">
 			<table class="w-full text-left text-xs border-collapse">
 				<thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider">
 					<tr>
@@ -563,6 +564,74 @@
 					{/each}
 				</tbody>
 			</table>
+		</div>
+
+		<!-- Mobile Cards View (< md screens) -->
+		<div class="md:hidden divide-y divide-slate-100">
+			{#if paginatedTransactions.length === 0}
+				<div class="py-10 text-center text-slate-400 text-xs">
+					Tidak ada data transaksi yang sesuai filter pencarian.
+				</div>
+			{/if}
+			{#each paginatedTransactions as t (t.id)}
+				{@const isSelected = selectedTxIds.has(t.id)}
+				<div class="p-4 space-y-2.5 {isSelected ? 'bg-slate-50/90' : ''}">
+					<div class="flex items-start justify-between gap-2">
+						<div class="flex items-start gap-2">
+							<input 
+								type="checkbox" 
+								checked={isSelected}
+								onchange={() => toggleSelect(t.id)}
+								class="w-4 h-4 mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 accent-slate-900 cursor-pointer"
+							/>
+							<div>
+								{#if t.tipe === 'IN'}
+									<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+										Pemasukan
+									</span>
+								{:else}
+									<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+										Pengeluaran
+									</span>
+								{/if}
+								<div class="font-bold text-slate-900 text-xs mt-1">{t.keterangan}</div>
+							</div>
+						</div>
+
+						<div class="flex items-center gap-1">
+							<button 
+								type="button" 
+								onclick={() => receiptModalTx = t}
+								class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+								title="Lihat Kuitansi"
+							>
+								<Eye class="w-4 h-4 text-blue-600" />
+							</button>
+							<button 
+								type="button" 
+								onclick={() => txToDelete = t}
+								class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+								title="Hapus Transaksi"
+							>
+								<Trash2 class="w-4 h-4 text-rose-600" />
+							</button>
+						</div>
+					</div>
+
+					<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+						<div>
+							<span class="text-slate-400 block text-[10px]">{t.tgl}</span>
+							<span class="text-slate-700 font-medium">{t.akunAsal}</span>
+						</div>
+						<div class="text-right">
+							<span class="text-slate-400 block text-[10px]">{t.tipe === 'IN' ? 'Kas Masuk' : 'Kas Keluar'}</span>
+							<span class="font-black text-xs tabular-nums {t.tipe === 'IN' ? 'text-emerald-700' : 'text-slate-900'}">
+								{t.tipe === 'IN' ? '+' : '-'}{formatRupiah(t.nominal)}
+							</span>
+						</div>
+					</div>
+				</div>
+			{/each}
 		</div>
 
 		<!-- Pagination Bar -->

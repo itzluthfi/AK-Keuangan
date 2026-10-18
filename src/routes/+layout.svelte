@@ -59,9 +59,9 @@
 
 			<!-- Minimal Executive Footer -->
 			<footer class="no-print border-t border-slate-200 bg-white py-4 text-xs text-slate-500">
-				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-					<div class="font-medium text-slate-600">
-						PANTAU MBG &bull; Sistem Monitoring Kas & Progres Fisik Proyek SPPG
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+					<div class="font-bold text-slate-700 text-xs">
+						PANTAU MBG
 					</div>
 					<div class="text-[11px] text-slate-400">
 						&copy; 2026 SPPG MBG &bull; Hak Cipta Dilindungi
